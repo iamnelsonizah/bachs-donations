@@ -1,0 +1,15 @@
+# Local operating-system/editor files.
+.DS_Store
+.idea/
+.vscode/
+
+# Local configuration and diagnostics; never commit credentials.
+.env
+.env.*
+*.log
+
+# Optional development dependencies and WordPress installations.
+vendor/
+node_modules/
+wordpress/
+wp-config.php
