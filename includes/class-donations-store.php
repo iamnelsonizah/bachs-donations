@@ -28,6 +28,8 @@ final class DonationsStore {
 			status varchar(20) NOT NULL DEFAULT 'pending',
 			currency varchar(10) NOT NULL,
 			amount decimal(18,6) NOT NULL,
+			campaign_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			campaign_title varchar(191) NOT NULL DEFAULT '',
 			donor_name varchar(191) NOT NULL DEFAULT '',
 			donor_email varchar(191) NOT NULL DEFAULT '',
 			created_at datetime NOT NULL,
@@ -36,7 +38,8 @@ final class DonationsStore {
 			UNIQUE KEY public_token (public_token),
 			UNIQUE KEY reference (reference),
 			KEY checkout_id (checkout_id),
-			KEY status_created (status,created_at)
+			KEY status_created (status,created_at),
+			KEY campaign_status_currency (campaign_id,status,currency)
 		) {$collate};";
 		$sql_events = "CREATE TABLE {$events} (
 			event_id varchar(128) NOT NULL,
@@ -47,7 +50,7 @@ final class DonationsStore {
 		dbDelta( $sql_events );
 	}
 
-	public static function create( $currency, $amount, $name, $email ) {
+	public static function create( $currency, $amount, $name, $email, $campaign_id = 0, $campaign_title = '' ) {
 		global $wpdb;
 		$now = current_time( 'mysql', true );
 		$token = bin2hex( random_bytes( 32 ) );
@@ -60,12 +63,14 @@ final class DonationsStore {
 				'status'       => 'pending',
 				'currency'     => $currency,
 				'amount'       => $amount,
+				'campaign_id'  => absint( $campaign_id ),
+				'campaign_title' => sanitize_text_field( $campaign_title ),
 				'donor_name'   => $name,
 				'donor_email'  => $email,
 				'created_at'   => $now,
 				'updated_at'   => $now,
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
 		);
 		if ( false === $result ) {
 			throw new \RuntimeException( 'Donation record could not be created.' );
@@ -160,6 +165,55 @@ final class DonationsStore {
 		return $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . self::donations_table() . ' ORDER BY id DESC LIMIT %d', $limit ), ARRAY_A );
 	}
 
+	/** Return a confirmed total without combining different charge currencies. */
+	public static function campaign_total( $campaign_id, $currency ) {
+		global $wpdb;
+		return (float) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COALESCE(SUM(amount), 0) FROM ' . self::donations_table() . ' WHERE campaign_id = %d AND currency = %s AND status = %s',
+				absint( $campaign_id ),
+				strtoupper( sanitize_text_field( $currency ) ),
+				'paid'
+			)
+		);
+	}
+
+	/** Return confirmed gift count and per-currency totals for one form. */
+	public static function campaign_summary( $campaign_id ) {
+		global $wpdb;
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT currency, COUNT(*) AS gift_count, COALESCE(SUM(amount), 0) AS total FROM ' . self::donations_table() . ' WHERE campaign_id = %d AND status = %s GROUP BY currency',
+				absint( $campaign_id ),
+				'paid'
+			),
+			ARRAY_A
+		);
+		$summary = array( 'count' => 0, 'totals' => array() );
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$currency = isset( $row['currency'] ) ? strtoupper( sanitize_text_field( $row['currency'] ) ) : '';
+			if ( '' === $currency ) {
+				continue;
+			}
+			$summary['count'] += absint( $row['gift_count'] );
+			$summary['totals'][ $currency ] = (float) $row['total'];
+		}
+		return $summary;
+	}
+
+	/** Return simple ledger totals for the Fundraising dashboard. */
+	public static function summary() {
+		global $wpdb;
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				'SELECT COUNT(*) AS donation_count, COALESCE(SUM(CASE WHEN status = %s THEN 1 ELSE 0 END), 0) AS paid_count FROM ' . self::donations_table(),
+				'paid'
+			),
+			ARRAY_A
+		);
+		return is_array( $row ) ? array_map( 'absint', $row ) : array( 'donation_count' => 0, 'paid_count' => 0 );
+	}
+
 	/** Return page of personal donation data for the WordPress privacy exporter. */
 	public static function by_email( $email, $limit = 100, $offset = 0 ) {
 		global $wpdb;
@@ -167,7 +221,7 @@ final class DonationsStore {
 		$offset = max( 0, absint( $offset ) );
 		return $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT id, reference, currency, amount, status, donor_name, donor_email, created_at FROM ' . self::donations_table() . ' WHERE donor_email = %s ORDER BY id ASC LIMIT %d OFFSET %d',
+				'SELECT id, reference, currency, amount, status, campaign_title, donor_name, donor_email, created_at FROM ' . self::donations_table() . ' WHERE donor_email = %s ORDER BY id ASC LIMIT %d OFFSET %d',
 				sanitize_email( $email ),
 				$limit,
 				$offset

@@ -26,14 +26,20 @@ final class CheckoutController {
 			wp_safe_redirect( $return_url );
 			exit;
 		}
-		if ( ! Settings::is_configured() ) {
+		if ( ! PaymentGateways::active()->is_configured() ) {
 			self::redirect_with_result( $return_url, 'unavailable' );
 		}
+		$campaign_id = isset( $_POST['campaign_id'] ) && is_scalar( $_POST['campaign_id'] ) ? absint( wp_unslash( $_POST['campaign_id'] ) ) : 0;
+		$campaign = null;
+		if ( $campaign_id ) {
+			$campaign = get_post( $campaign_id );
+			if ( ! $campaign instanceof \WP_Post || DonationForms::POST_TYPE !== $campaign->post_type || 'publish' !== $campaign->post_status ) {
+				self::redirect_with_result( $return_url, 'invalid' );
+			}
+		}
+		$form_settings = DonationForms::settings( $campaign_id );
 
 		$currency = isset( $_POST['currency'] ) && is_scalar( $_POST['currency'] ) ? strtoupper( sanitize_text_field( (string) wp_unslash( $_POST['currency'] ) ) ) : '';
-		if ( ! in_array( $currency, Settings::enabled_currencies(), true ) ) {
-			self::redirect_with_result( $return_url, 'invalid' );
-		}
 		$email = isset( $_POST['email'] ) && is_scalar( $_POST['email'] ) ? sanitize_email( wp_unslash( (string) $_POST['email'] ) ) : '';
 		$name = isset( $_POST['name'] ) && is_scalar( $_POST['name'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['name'] ) ) : '';
 		if ( ! is_email( $email ) || strlen( $email ) > 191 || strlen( $name ) > 191 ) {
@@ -41,11 +47,22 @@ final class CheckoutController {
 		}
 
 		$amount_input = isset( $_POST['custom_amount'] ) && is_scalar( $_POST['custom_amount'] ) ? trim( (string) wp_unslash( $_POST['custom_amount'] ) ) : '';
+		if ( '' !== $amount_input && ! $form_settings['custom_amount'] ) {
+			self::redirect_with_result( $return_url, 'invalid' );
+		}
 		if ( '' === $amount_input && isset( $_POST['preset_amount'] ) && is_scalar( $_POST['preset_amount'] ) ) {
 			$preset = explode( ':', trim( (string) wp_unslash( $_POST['preset_amount'] ) ), 2 );
-			if ( 2 === count( $preset ) && strtoupper( $preset[0] ) === $currency ) {
-				$amount_input = $preset[1];
+			$preset_currency = 2 === count( $preset ) ? strtoupper( $preset[0] ) : '';
+			if ( 2 === count( $preset ) && in_array( $preset_currency, $form_settings['currencies'], true ) ) {
+				$preset_amount = self::normalize_amount( $preset[1] );
+				if ( false !== $preset_amount && in_array( $preset_amount, $form_settings['amounts'][ $preset_currency ], true ) ) {
+					$amount_input = $preset_amount;
+					$currency = $preset_currency;
+				}
 			}
+		}
+		if ( ! in_array( $currency, $form_settings['currencies'], true ) ) {
+			self::redirect_with_result( $return_url, 'invalid' );
 		}
 		$amount = self::normalize_amount( $amount_input );
 		if ( false === $amount ) {
@@ -56,27 +73,30 @@ final class CheckoutController {
 		}
 
 		try {
-			$donation = DonationsStore::create( $currency, $amount, $name, $email );
+			$gateway = PaymentGateways::active();
+			$campaign_title = $campaign instanceof \WP_Post ? sanitize_text_field( $campaign->post_title ) : '';
+			$donation = DonationsStore::create( $currency, $amount, $name, $email, $campaign_id, $campaign_title );
 			$token = $donation['token'];
 			$success_url = add_query_arg( 'bachs_donation', $token, remove_query_arg( array( 'bachs_donation', 'bachs_donation_result', 'bachs_donation_cancel' ), $return_url ) );
 			$cancel_url = add_query_arg( 'bachs_donation_cancel', $token, remove_query_arg( array( 'bachs_donation', 'bachs_donation_result', 'bachs_donation_cancel' ), $return_url ) );
 			$payload = array(
 				'pricing' => array( 'currency' => $currency, 'amount' => $amount ),
 				'customer' => array_filter( array( 'email' => $email, 'name' => $name ) ),
-				'payment_method_types' => 'USD' === $currency ? array( 'USD_CARD' ) : array( 'NGN_CARD', 'NGN_BANK_TRANSFER' ),
+				'payment_method_types' => $gateway->payment_method_types( $currency, $form_settings['payment_methods'][ $currency ] ),
 				'success_url' => $success_url,
 				'cancel_url'  => $cancel_url,
 				'reference'   => $donation['reference'],
 				'metadata'    => array(
 					'integration' => 'wordpress-donations',
 					'donation_id' => (string) $donation['id'],
+					'form_id' => (string) $campaign_id,
 				),
 			);
 			$idempotency_key = 'bachs-donation-' . substr( hash( 'sha256', $donation['reference'] ), 0, 48 );
-			$session = ( new ApiClient() )->create_checkout_session( $payload, $idempotency_key );
+			$session = $gateway->create_checkout_session( $payload, $idempotency_key );
 			$checkout_id = isset( $session['checkout_id'] ) && is_scalar( $session['checkout_id'] ) ? sanitize_text_field( (string) $session['checkout_id'] ) : '';
 			$checkout_url = isset( $session['checkout_url'] ) && is_string( $session['checkout_url'] ) ? esc_url_raw( $session['checkout_url'] ) : '';
-			if ( '' === $checkout_id || ! self::is_bachs_checkout_url( $checkout_url ) ) {
+			if ( '' === $checkout_id || ! $gateway->is_checkout_url_allowed( $checkout_url ) ) {
 				DonationsStore::set_status( $donation['id'], 'session_error' );
 				self::log_failure( 'invalid_checkout_session' );
 				self::redirect_with_result( $return_url, 'unavailable', $token );

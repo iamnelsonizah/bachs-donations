@@ -4,17 +4,22 @@ Accept one-time donations in **USD and NGN** through Bachs hosted checkout. This
 
 Source repository: [github.com/iamnelsonizah/bachs-donations](https://github.com/iamnelsonizah/bachs-donations).
 
-> Early release: `0.1.0`. Test in Bachs Sandbox before enabling live donations. This release supports one-time payments only.
+> Release `0.2.0`. Test in Bachs Sandbox before enabling live donations. The plugin supports one-time payments only.
 
 ## Features
 
 - Standalone WordPress plugin; no WooCommerce dependency.
-- Donor-facing form with USD/NGN selection, preset amounts, custom amounts, optional name, and required email.
+- Create and publish multiple donation forms from **Fundraising → Donation Forms**.
+- Edit each form's title, story, excerpt, image, accepted currencies and payment methods, default currency, suggested gift amounts, custom-amount option, and optional fundraising goal in WordPress.
+- Each published form gets its own public donation page. A shortcode can embed a form on any other page.
+- Optional goal progress shows confirmed gifts in the selected goal currency only; currencies are never combined or converted.
+- Donor-facing checkout with per-form USD/NGN selection, preset amounts, optional custom amount, optional name, and required email.
 - USD checkout restricted to the USD card corridor.
 - NGN checkout offers NGN card and bank transfer corridors, subject to the NGO's Bachs account configuration.
 - Hosted Bachs checkout; this plugin never handles or stores card details.
 - Signed webhook verification, replay protection, and exact currency/amount matching before a donation is marked paid.
-- Donation ledger in WordPress admin, with manual checkout reconciliation if a webhook is delayed.
+- Donation ledger in WordPress admin linked to the form that received each gift, with manual checkout reconciliation if a webhook is delayed.
+- Payment provider interface for checkout creation, reconciliation, webhook verification, and event normalization. Bachs is the initial provider.
 - WordPress personal-data exporter and eraser support.
 - Secret keys can be defined in `wp-config.php` instead of stored in WordPress settings.
 
@@ -34,10 +39,13 @@ The currency selector controls what the donor is charged. Bachs settlement and w
 1. Download `bachs-donations.zip` from a release, or create a ZIP containing the `bachs-donations` plugin folder.
 2. In WordPress, open **Plugins → Add New Plugin → Upload Plugin**.
 3. Select the ZIP, choose **Install Now**, and then **Activate Plugin**.
-4. Open **Settings → Bachs Donations** and enter the credentials described below.
+4. Open **Fundraising → Bachs Donations** and enter the credentials described below.
 5. Add the webhook URL in the Bachs dashboard and subscribe it to `checkout.completed`, `checkout.expired`, and `collection.succeeded`.
-6. Add the shortcode `[bachs_donation_form]` to a page and publish it.
-7. Complete Sandbox donations before switching to Live.
+6. Open **Fundraising → Donation Forms → Add Donation Form**. Add the form title, story, and optional featured image, then choose accepted currencies, suggested amounts, and whether to allow custom amounts. Set an optional fundraising goal.
+7. Publish the form. Its public donation page is created automatically and includes the configured form.
+8. Complete a Sandbox donation before switching to Live. Check the donation and its form name under **Fundraising → Donations**.
+
+To upgrade an existing `0.1.0` installation, back up the site and replace the plugin files in place, then reactivate if WordPress asks. Do not use **Delete** on the Plugins screen to perform the upgrade: uninstalling removes saved credentials. The database upgrade adds form-attribution fields while retaining existing donation records.
 
 For local development, use a public HTTPS staging site or a secure tunnel that forwards to your development site. Bachs must be able to reach the webhook endpoint and the checkout return URLs.
 
@@ -53,14 +61,14 @@ git clone https://github.com/iamnelsonizah/bachs-donations.git bachs-donations
 
 Create a restricted API secret key for the plugin. It needs the permission to create checkout sessions (shown as **Create & charge**) and retrieve them for reconciliation (shown as **View payments**). The corresponding API scopes are `payments:write` and `payments:read`. Keep Sandbox and Live credentials separate. See [Bachs API key scopes](https://docs.bachs.io/developer-portal/api-keys).
 
-In **Settings → Bachs Donations**:
+In **Fundraising → Bachs Donations**:
 
 1. Choose **Sandbox**.
 2. Enter your Sandbox secret API key and webhook signing secret.
 3. Select the currencies the organization accepts and choose the default.
 4. Save settings.
 5. In the Bachs Sandbox dashboard, create a webhook endpoint using the URL shown on this settings page. Subscribe it to `checkout.completed`, `checkout.expired`, and `collection.succeeded`; copy its signing secret into the matching Sandbox field.
-6. Make a test donation and verify that it appears as paid in **Donations**.
+6. Create a test donation form, publish it, make a test donation, and verify that it appears as paid in **Fundraising → Donations**.
 7. When ready, add separate Live credentials and webhook secret, select **Live**, and save.
 
 The webhook URL is:
@@ -88,25 +96,34 @@ The plugin uses the constants for credentials when they are defined. Keep `wp-co
 
 During webhook-secret rotation, define the old secret temporarily as `BACHS_DONATIONS_SANDBOX_WEBHOOK_SECRET_PREVIOUS` or `BACHS_DONATIONS_LIVE_WEBHOOK_SECRET_PREVIOUS` while updating the current secret. Remove the previous-secret constant after Bachs finishes sending signatures from the old secret.
 
-## Add a donation form
+## Create and publish donation forms
 
-Place this shortcode in a WordPress page, post, or shortcode-capable block:
+1. In WordPress admin, open **Fundraising → Donation Forms → Add Donation Form**.
+2. Enter the form title and write the cause story in the WordPress editor. Add an excerpt and featured image if useful.
+3. In **Donation Form Settings**, choose the currencies this form should accept. A currency must first be enabled globally in **Fundraising → Bachs Donations**.
+4. Set the default currency, suggested amounts for USD and/or NGN, and whether donors can enter a custom amount.
+5. Optionally set a fundraising goal and currency. The progress indicator counts confirmed donations in that currency only. For example, an NGN goal does not include USD gifts.
+6. Publish the form. Visit the published page to see the story and donation checkout together.
+
+The page permalink is based on the form title, usually under `/donate/`. If that URL conflicts with an existing page or returns a 404, edit the form slug or open **Settings → Permalinks** and save the permalink settings once.
+
+To place a form inside a custom page or page-builder layout, copy its form ID from the settings box and add this shortcode, replacing `123` with that ID:
 
 ```text
-[bachs_donation_form]
+[bachs_donation_form id="123"]
 ```
 
-The form shows the enabled currencies and suggested amounts. Donors can enter a different amount. A donor email is required so the hosted checkout can associate the payment with the donation; the name is optional. The form can be styled with the `bachs-donation-form` and `bachs-donation-notice` CSS classes.
+The legacy shortcode `[bachs_donation_form]` still works as a general form using global currencies and standard suggested amounts. New fundraisers should use a created donation form so that gifts are attributed to the correct cause.
 
 ## View and reconcile donations
 
-Administrators with the `manage_options` capability can open **Donations** in WordPress admin to review the most recent 100 donation records. For an unconfirmed payment with a checkout session, choose **Check payment** to retrieve the checkout status directly from Bachs. The plugin rechecks the amount and currency before updating the ledger.
+Administrators with the `manage_options` capability can open **Fundraising → Donations** to review the most recent 100 donation records, including the form that received each gift. For an unconfirmed payment with a checkout session, choose **Check payment** to retrieve the checkout status directly from Bachs. The plugin rechecks the amount and currency before updating the ledger. The **Fundraising** home provides a create-form shortcut, setup steps, and counts for forms and donations.
 
 ## Payment scope and current limitations
 
 - This release handles one-time USD and NGN gifts. Recurring donations are not implemented.
 - USD currently uses the USD card corridor. NGN currently offers NGN card and NGN bank transfer. Which methods Bachs actually shows depends on the account's activation, enabled methods, amount, and eligibility.
-- The plugin does not create tax receipts, donor accounts, campaigns, fundraising goals, or recurring schedules.
+- The plugin provides one-time donation forms and optional per-form goals. Recurring schedules, donor accounts, PDF tax receipts, and advanced fundraising reports are not implemented.
 - The plugin does not send a custom donor receipt email; configure Bachs receipt settings for payment receipts and handle any NGO tax acknowledgements separately.
 - Donation data is stored in custom WordPress database tables and is not converted into WooCommerce orders.
 - Bachs checkout and payment processing remain subject to Bachs account terms, capabilities, and availability.
@@ -122,7 +139,7 @@ Administrators with the `manage_options` capability can open **Donations** in Wo
 
 ## Development
 
-The code is organized by responsibility in `includes/`: API client, settings, checkout submission, webhook verification, storage, reconciliation, admin ledger, shortcode, and privacy hooks. The plugin uses WordPress APIs and has no Composer or npm runtime dependency.
+The code is organized by responsibility in `includes/`: form management, gateway contract and Bachs adapter, API client, settings, checkout submission, webhook verification, storage, reconciliation, admin screens, shortcode, and privacy hooks. A provider implements `PaymentGatewayInterface` and can be supplied with the `bachs_donations_payment_gateway` filter. See [Adding a payment gateway](docs/payment-gateways.md) for the contract. Bachs is the only included provider. The plugin uses WordPress APIs and has no Composer or npm runtime dependency.
 
 Before a release, check PHP syntax on all PHP files and exercise the flow on a disposable WordPress site with Bachs Sandbox credentials. Never test with live donor funds.
 

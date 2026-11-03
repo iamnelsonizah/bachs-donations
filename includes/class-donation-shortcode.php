@@ -14,9 +14,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class DonationShortcode {
 	public static function register_hooks() {
 		add_shortcode( 'bachs_donation_form', array( __CLASS__, 'render' ) );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_styles' ) );
 	}
 
-	public static function render() {
+	/** Enqueue the small, theme-friendly form stylesheet only where needed. */
+	public static function enqueue_styles() {
+		$should_enqueue = is_singular( DonationForms::POST_TYPE );
+		if ( ! $should_enqueue && is_singular() ) {
+			$post = get_post();
+			$should_enqueue = $post instanceof \WP_Post && has_shortcode( $post->post_content, 'bachs_donation_form' );
+		}
+		if ( $should_enqueue ) {
+			wp_enqueue_style( 'bachs-donations-form', plugins_url( 'assets/css/donation-form.css', BACHS_DONATIONS_FILE ), array(), BACHS_DONATIONS_VERSION );
+			wp_enqueue_script( 'bachs-donations-form', plugins_url( 'assets/js/donation-form.js', BACHS_DONATIONS_FILE ), array(), BACHS_DONATIONS_VERSION, true );
+		}
+	}
+
+	public static function render( $attributes = array() ) {
+		$attributes = shortcode_atts( array( 'id' => 0 ), $attributes, 'bachs_donation_form' );
+		$form_id = absint( $attributes['id'] );
+		if ( $form_id && ( DonationForms::POST_TYPE !== get_post_type( $form_id ) || 'publish' !== get_post_status( $form_id ) ) ) {
+			return '';
+		}
 		ob_start();
 		if ( isset( $_GET['bachs_donation'] ) && is_scalar( $_GET['bachs_donation'] ) ) {
 			self::render_return_state( sanitize_text_field( (string) wp_unslash( $_GET['bachs_donation'] ) ) );
@@ -27,48 +46,72 @@ final class DonationShortcode {
 		if ( isset( $_GET['bachs_donation_result'] ) && is_scalar( $_GET['bachs_donation_result'] ) ) {
 			self::render_result_notice( sanitize_key( (string) wp_unslash( $_GET['bachs_donation_result'] ) ) );
 		}
-		self::render_form();
+		self::render_form( $form_id );
 		return ob_get_clean();
 	}
 
-	private static function render_form() {
-		if ( ! Settings::is_configured() ) {
-			echo '<p class="bachs-donation-notice">' . esc_html__( 'Donations are temporarily unavailable. Please try again later.', 'bachs-donations' ) . '</p>';
+	private static function render_form( $form_id = 0 ) {
+		$config = DonationForms::settings( $form_id );
+		if ( $form_id ) {
+			self::render_goal( $form_id, $config );
+		}
+		if ( ! PaymentGateways::active()->is_configured() ) {
+			echo '<p class="bachs-donation-notice" role="status">' . esc_html__( 'Donations are temporarily unavailable. Please try again later.', 'bachs-donations' ) . '</p>';
 			return;
 		}
-		$currencies = Settings::enabled_currencies();
-		$presets = array(
-			'USD' => array( '10.00', '25.00', '50.00', '100.00' ),
-			'NGN' => array( '5000.00', '10000.00', '25000.00', '50000.00' ),
-		);
+		$currencies = $config['currencies'];
+		$form_key = wp_unique_id( 'bachs-donation-' . ( $form_id ? $form_id : 'general' ) . '-' );
 		echo '<form class="bachs-donation-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		echo '<input type="hidden" name="action" value="bachs_donation_start">';
+		echo '<input type="hidden" name="campaign_id" value="' . esc_attr( (string) $form_id ) . '">';
 		wp_nonce_field( 'bachs_donation_start' );
-		echo '<p><label for="bachs-donation-currency">' . esc_html__( 'Donation currency', 'bachs-donations' ) . '</label><br>';
+		echo '<p><label for="' . esc_attr( $form_key . 'currency' ) . '">' . esc_html__( 'Donation currency', 'bachs-donations' ) . '</label><br>';
 		if ( 1 === count( $currencies ) ) {
 			echo '<input type="hidden" name="currency" value="' . esc_attr( $currencies[0] ) . '"><strong>' . esc_html( $currencies[0] ) . '</strong></p>';
 		} else {
-			echo '<select id="bachs-donation-currency" name="currency">';
+			echo '<select id="' . esc_attr( $form_key . 'currency' ) . '" name="currency" required>';
 			foreach ( $currencies as $currency ) {
-				echo '<option value="' . esc_attr( $currency ) . '" ' . selected( Settings::default_currency(), $currency, false ) . '>' . esc_html( 'USD' === $currency ? 'US Dollar (USD)' : 'Nigerian Naira (NGN)' ) . '</option>';
+				echo '<option value="' . esc_attr( $currency ) . '" ' . selected( $config['default_currency'], $currency, false ) . '>' . esc_html( 'USD' === $currency ? 'US Dollar (USD)' : 'Nigerian Naira (NGN)' ) . '</option>';
 			}
 			echo '</select></p>';
 		}
-		echo '<p><label for="bachs-donation-preset">' . esc_html__( 'Choose an amount', 'bachs-donations' ) . '</label><br><select id="bachs-donation-preset" name="preset_amount"><option value="">' . esc_html__( 'Choose a preset or enter a custom amount', 'bachs-donations' ) . '</option>';
+		$has_presets = false;
 		foreach ( $currencies as $currency ) {
-			echo '<optgroup label="' . esc_attr( $currency ) . '">';
-			foreach ( $presets[ $currency ] as $amount ) {
+			$has_presets = $has_presets || ! empty( $config['amounts'][ $currency ] );
+		}
+		if ( $has_presets ) {
+			echo '<p><label for="' . esc_attr( $form_key . 'preset' ) . '">' . esc_html__( 'Choose an amount', 'bachs-donations' ) . '</label><br><select id="' . esc_attr( $form_key . 'preset' ) . '" name="preset_amount"><option value="">' . esc_html__( 'Choose a suggested amount', 'bachs-donations' ) . '</option>';
+		foreach ( $currencies as $currency ) {
+			if ( empty( $config['amounts'][ $currency ] ) ) {
+				continue;
+			}
+			echo '<optgroup label="' . esc_attr( $currency ) . '" data-currency="' . esc_attr( $currency ) . '">';
+			foreach ( $config['amounts'][ $currency ] as $amount ) {
 				echo '<option value="' . esc_attr( $currency . ':' . $amount ) . '">' . esc_html( $currency . ' ' . number_format_i18n( (float) $amount, 2 ) ) . '</option>';
 			}
 			echo '</optgroup>';
 		}
 		echo '</select></p>';
-		echo '<p><label for="bachs-donation-custom-amount">' . esc_html__( 'Custom amount', 'bachs-donations' ) . '</label><br><input id="bachs-donation-custom-amount" type="number" name="custom_amount" min="0.01" step="0.01" inputmode="decimal"></p>';
-		echo '<p><label for="bachs-donation-name">' . esc_html__( 'Your name (optional)', 'bachs-donations' ) . '</label><br><input id="bachs-donation-name" type="text" name="name" maxlength="191" autocomplete="name"></p>';
-		echo '<p><label for="bachs-donation-email">' . esc_html__( 'Email for your donation receipt', 'bachs-donations' ) . '</label><br><input required id="bachs-donation-email" type="email" name="email" maxlength="191" autocomplete="email"></p>';
-		echo '<div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden"><label for="bachs-donation-website">' . esc_html__( 'Leave this field empty', 'bachs-donations' ) . '</label><input id="bachs-donation-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>';
-		echo '<p class="bachs-donation-privacy">' . esc_html__( 'Your donation is processed on Bachs secure checkout. Your name and email are shared with Bachs to process the donation and receipt.', 'bachs-donations' ) . '</p>';
+		}
+		if ( $config['custom_amount'] ) {
+			echo '<p><label for="' . esc_attr( $form_key . 'custom' ) . '">' . esc_html__( 'Or enter a custom amount', 'bachs-donations' ) . '</label><br><input id="' . esc_attr( $form_key . 'custom' ) . '" type="number" name="custom_amount" min="0.01" step="0.01" inputmode="decimal"></p>';
+		}
+		echo '<p><label for="' . esc_attr( $form_key . 'name' ) . '">' . esc_html__( 'Your name (optional)', 'bachs-donations' ) . '</label><br><input id="' . esc_attr( $form_key . 'name' ) . '" type="text" name="name" maxlength="191" autocomplete="name"></p>';
+		echo '<p><label for="' . esc_attr( $form_key . 'email' ) . '">' . esc_html__( 'Email for your donation receipt', 'bachs-donations' ) . '</label><br><input required id="' . esc_attr( $form_key . 'email' ) . '" type="email" name="email" maxlength="191" autocomplete="email"></p>';
+		echo '<div class="bachs-donation-honeypot" aria-hidden="true"><label for="' . esc_attr( $form_key . 'website' ) . '">' . esc_html__( 'Leave this field empty', 'bachs-donations' ) . '</label><input id="' . esc_attr( $form_key . 'website' ) . '" name="website" type="text" tabindex="-1" autocomplete="off"></div>';
+		echo '<p class="bachs-donation-privacy">' . esc_html__( 'Payment is completed on the secure checkout hosted by our payment provider. Your name and email are shared with the provider to process the donation and receipt.', 'bachs-donations' ) . '</p>';
 		echo '<p><button type="submit">' . esc_html__( 'Continue to secure payment', 'bachs-donations' ) . '</button></p></form>';
+	}
+
+	/** Show confirmed progress in the fundraiser's goal currency only. */
+	private static function render_goal( $form_id, $config ) {
+		if ( '' === $config['goal_amount'] ) {
+			return;
+		}
+		$current = DonationsStore::campaign_total( $form_id, $config['goal_currency'] );
+		$target = (float) $config['goal_amount'];
+		$percent = $target > 0 ? min( 100, ( $current / $target ) * 100 ) : 0;
+		echo '<div class="bachs-donation-goal"><p><strong>' . esc_html( $config['goal_currency'] . ' ' . number_format_i18n( $current, 2 ) ) . '</strong> ' . esc_html__( 'raised of', 'bachs-donations' ) . ' ' . esc_html( $config['goal_currency'] . ' ' . number_format_i18n( $target, 2 ) ) . '</p><progress value="' . esc_attr( (string) $percent ) . '" max="100" aria-label="' . esc_attr( sprintf( __( '%1$s percent of the %2$s goal raised', 'bachs-donations' ), number_format_i18n( $percent, 0 ), $config['goal_currency'] ) ) . '">' . esc_html( number_format_i18n( $percent, 0 ) ) . '%</progress></div>';
 	}
 
 	private static function render_return_state( $token ) {

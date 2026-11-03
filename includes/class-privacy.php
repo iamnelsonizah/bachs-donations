@@ -46,6 +46,7 @@ final class Privacy {
 					array( 'name' => __( 'Donor name', 'bachs-donations' ), 'value' => $row['donor_name'] ),
 					array( 'name' => __( 'Donor email', 'bachs-donations' ), 'value' => $row['donor_email'] ),
 					array( 'name' => __( 'Donation reference', 'bachs-donations' ), 'value' => $row['reference'] ),
+					array( 'name' => __( 'Donation form', 'bachs-donations' ), 'value' => $row['campaign_title'] ),
 					array( 'name' => __( 'Amount', 'bachs-donations' ), 'value' => $row['currency'] . ' ' . $row['amount'] ),
 					array( 'name' => __( 'Payment status', 'bachs-donations' ), 'value' => $row['status'] ),
 					array( 'name' => __( 'Created at (UTC)', 'bachs-donations' ), 'value' => $row['created_at'] ),
@@ -81,7 +82,7 @@ final class Privacy {
 
 	public static function register_policy_content() {
 		if ( function_exists( 'wp_add_privacy_policy_content' ) ) {
-			$content = '<p>' . esc_html__( 'When a visitor makes a donation, this plugin stores the donor name (if provided), email address, donation amount, currency, payment status, Bachs checkout and charge identifiers, and a random return-page token. The donor name and email are sent to Bachs to create the hosted checkout. Bachs processes the payment under its own privacy policy.', 'bachs-donations' ) . '</p>';
+			$content = '<p>' . esc_html__( 'When a visitor makes a donation, this plugin stores the donor name (if provided), email address, donation form title, donation amount, currency, payment status, Bachs checkout and charge identifiers, and a random return-page token. The donor name and email are sent to Bachs to create the hosted checkout. Bachs processes the payment under its own privacy policy.', 'bachs-donations' ) . '</p>';
 			$content .= '<p>' . esc_html__( 'To limit automated checkout creation, the plugin temporarily stores a keyed hash derived from the visitor IP address for up to 15 minutes. It does not store the raw IP address for this rate limit.', 'bachs-donations' ) . '</p>';
 			$content .= '<p>' . esc_html__( 'Donation records are retained in the site database for accounting and reconciliation. A privacy erasure request removes the donor name, email, and public return token while retaining transaction fields. This does not erase information held by Bachs; submit any required request to Bachs separately. Site administrators should set a retention period that follows their local legal and accounting requirements.', 'bachs-donations' ) . '</p>';
 			wp_add_privacy_policy_content( __( 'Bachs Donations', 'bachs-donations' ), wp_kses_post( $content ) );

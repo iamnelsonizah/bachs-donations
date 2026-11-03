@@ -20,7 +20,8 @@ final class Settings {
 	}
 
 	public static function register_page() {
-		add_options_page(
+		add_submenu_page(
+			'bachs-donations',
 			__( 'Bachs Donations', 'bachs-donations' ),
 			__( 'Bachs Donations', 'bachs-donations' ),
 			'manage_options',
@@ -118,7 +119,7 @@ final class Settings {
 			$settings['default_currency'] = $settings['currencies'][0];
 		}
 		update_option( self::OPTION, $settings, false );
-		wp_safe_redirect( add_query_arg( array( 'page' => 'bachs-donations-settings', 'settings-updated' => '1' ), admin_url( 'options-general.php' ) ) );
+		wp_safe_redirect( add_query_arg( array( 'page' => 'bachs-donations-settings', 'settings-updated' => '1' ), admin_url( 'admin.php' ) ) );
 		exit;
 	}
 

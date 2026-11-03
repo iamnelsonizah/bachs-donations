@@ -34,7 +34,7 @@ final class Reconciler {
 		set_transient( $lock, 1, 30 );
 
 		try {
-			$session = ( new ApiClient() )->retrieve_checkout_session( $donation['checkout_id'] );
+			$session = PaymentGateways::active()->retrieve_checkout_session( $donation['checkout_id'] );
 			$session = self::session_data( $session );
 			if ( self::session_is_paid( $session ) ) {
 				$amount   = isset( $session['charge']['amount'] ) && is_scalar( $session['charge']['amount'] ) ? (string) $session['charge']['amount'] : '';

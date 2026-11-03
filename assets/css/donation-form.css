@@ -1,0 +1,129 @@
+.bachs-donation-featured-image {
+	display: block;
+	width: 100%;
+	height: auto;
+	margin: 1rem 0 1.5rem;
+	border-radius: 10px;
+}
+
+.bachs-donation-form {
+	--bachs-donations-accent: #176b52;
+	--bachs-donations-border: #d7dedb;
+	box-sizing: border-box;
+	max-width: 38rem;
+	margin: 1.75rem 0;
+	padding: clamp(1.25rem, 4vw, 2rem);
+	border: 1px solid var(--bachs-donations-border);
+	border-radius: 12px;
+	background: #fff;
+	box-shadow: 0 8px 30px rgb(20 45 35 / 7%);
+}
+
+.bachs-donation-form *,
+.bachs-donation-goal * {
+	box-sizing: border-box;
+}
+
+.bachs-donation-form p {
+	margin: 0 0 1.15rem;
+}
+
+.bachs-donation-form label {
+	display: inline-block;
+	margin-bottom: .4rem;
+	font-weight: 600;
+}
+
+.bachs-donation-form input[type="text"],
+.bachs-donation-form input[type="email"],
+.bachs-donation-form input[type="number"],
+.bachs-donation-form select {
+	width: 100%;
+	min-height: 2.8rem;
+	padding: .65rem .75rem;
+	border: 1px solid #9ba9a3;
+	border-radius: 6px;
+	background: #fff;
+	color: inherit;
+	font: inherit;
+}
+
+.bachs-donation-form input:focus,
+.bachs-donation-form select:focus,
+.bachs-donation-form button:focus-visible {
+	outline: 3px solid rgb(23 107 82 / 25%);
+	outline-offset: 2px;
+	border-color: var(--bachs-donations-accent);
+}
+
+.bachs-donation-form button[type="submit"] {
+	width: 100%;
+	min-height: 3rem;
+	padding: .75rem 1rem;
+	border: 0;
+	border-radius: 6px;
+	background: var(--bachs-donations-accent);
+	color: #fff;
+	font: inherit;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.bachs-donation-form button[type="submit"]:hover {
+	filter: brightness(.92);
+}
+
+.bachs-donation-privacy {
+	font-size: .9em;
+	opacity: .82;
+}
+
+.bachs-donation-honeypot {
+	position: absolute !important;
+	left: -10000px !important;
+	top: auto !important;
+	width: 1px !important;
+	height: 1px !important;
+	overflow: hidden !important;
+}
+
+.bachs-donation-notice {
+	margin: 1rem 0;
+	padding: .9rem 1rem;
+	border-left: 4px solid #8c8f94;
+	background: #f6f7f7;
+}
+
+.bachs-donation-success {
+	border-color: #16834b;
+	background: #eff8f2;
+}
+
+.bachs-donation-error {
+	border-color: #b32d2e;
+	background: #fcf0f1;
+}
+
+.bachs-donation-goal {
+	max-width: 38rem;
+	margin: 1.5rem 0 1rem;
+}
+
+.bachs-donation-goal progress {
+	display: block;
+	width: 100%;
+	height: .85rem;
+	border: 0;
+	border-radius: 99px;
+	accent-color: #176b52;
+}
+
+.bachs-donation-goal progress::-webkit-progress-bar {
+	border-radius: 99px;
+	background: #e4ebe7;
+}
+
+.bachs-donation-goal progress::-webkit-progress-value {
+	border-radius: 99px;
+	background: #176b52;
+}
