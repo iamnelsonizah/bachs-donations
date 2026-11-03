@@ -32,6 +32,8 @@ final class DonationsStore {
 			campaign_title varchar(191) NOT NULL DEFAULT '',
 			donor_name varchar(191) NOT NULL DEFAULT '',
 			donor_email varchar(191) NOT NULL DEFAULT '',
+			donor_phone varchar(32) NOT NULL DEFAULT '',
+			donor_fields longtext NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -50,7 +52,7 @@ final class DonationsStore {
 		dbDelta( $sql_events );
 	}
 
-	public static function create( $currency, $amount, $name, $email, $campaign_id = 0, $campaign_title = '' ) {
+	public static function create( $currency, $amount, $name, $email, $campaign_id = 0, $campaign_title = '', $phone = '', $custom_fields = array() ) {
 		global $wpdb;
 		$now = current_time( 'mysql', true );
 		$token = bin2hex( random_bytes( 32 ) );
@@ -67,10 +69,12 @@ final class DonationsStore {
 				'campaign_title' => sanitize_text_field( $campaign_title ),
 				'donor_name'   => $name,
 				'donor_email'  => $email,
+				'donor_phone'  => sanitize_text_field( $phone ),
+				'donor_fields' => wp_json_encode( is_array( $custom_fields ) ? $custom_fields : array() ),
 				'created_at'   => $now,
 				'updated_at'   => $now,
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
 		if ( false === $result ) {
 			throw new \RuntimeException( 'Donation record could not be created.' );
@@ -245,7 +249,7 @@ final class DonationsStore {
 	public static function report_export_rows( $start_utc, $end_utc, $currency = '', $limit = 500, $offset = 0 ) {
 		global $wpdb;
 		list( $where, $args ) = self::report_where( $start_utc, $end_utc, $currency );
-		$sql = 'SELECT created_at, campaign_title, reference, currency, amount, status, donor_name, donor_email FROM ' . self::donations_table() . $where . ' ORDER BY id ASC LIMIT %d OFFSET %d';
+		$sql = 'SELECT created_at, campaign_title, reference, currency, amount, status, donor_name, donor_email, donor_phone, donor_fields FROM ' . self::donations_table() . $where . ' ORDER BY id ASC LIMIT %d OFFSET %d';
 		$args[] = min( 1000, max( 1, absint( $limit ) ) );
 		$args[] = max( 0, absint( $offset ) );
 		return $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
@@ -270,7 +274,7 @@ final class DonationsStore {
 		$offset = max( 0, absint( $offset ) );
 		return $wpdb->get_results(
 			$wpdb->prepare(
-				'SELECT id, reference, currency, amount, status, campaign_title, donor_name, donor_email, created_at FROM ' . self::donations_table() . ' WHERE donor_email = %s ORDER BY id ASC LIMIT %d OFFSET %d',
+				'SELECT id, reference, currency, amount, status, campaign_title, donor_name, donor_email, donor_phone, donor_fields, created_at FROM ' . self::donations_table() . ' WHERE donor_email = %s ORDER BY id ASC LIMIT %d OFFSET %d',
 				sanitize_email( $email ),
 				$limit,
 				$offset
@@ -297,13 +301,15 @@ final class DonationsStore {
 			$result = $wpdb->update(
 				self::donations_table(),
 				array(
-					'donor_name'  => '',
-					'donor_email' => '',
+					'donor_name'   => '',
+					'donor_email'  => '',
+					'donor_phone'  => '',
+					'donor_fields' => '{}',
 					'public_token' => $replacement_token,
-					'updated_at'  => current_time( 'mysql', true ),
+					'updated_at'   => current_time( 'mysql', true ),
 				),
 				array( 'id' => absint( $id ), 'donor_email' => $email ),
-				array( '%s', '%s', '%s', '%s' ),
+				array( '%s', '%s', '%s', '%s', '%s', '%s' ),
 				array( '%d', '%s' )
 			);
 			if ( false === $result ) {

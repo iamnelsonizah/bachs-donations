@@ -61,7 +61,9 @@ final class DonationShortcode {
 		}
 		$currencies = $config['currencies'];
 		$form_key = wp_unique_id( 'bachs-donation-' . ( $form_id ? $form_id : 'general' ) . '-' );
-		echo '<form class="bachs-donation-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		$form_style = 'bachs-donation-form bachs-donation-form--' . esc_attr( $config['form_style'] ) . ' bachs-donation-form--' . esc_attr( $config['corner_style'] );
+		$style = '--bachs-donations-accent:' . esc_attr( $config['accent_color'] ) . ';--bachs-donations-button-text:' . esc_attr( DonationForms::contrast_text( $config['accent_color'] ) ) . ';';
+		echo '<form class="' . esc_attr( $form_style ) . '" style="' . $style . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		echo '<input type="hidden" name="action" value="bachs_donation_start">';
 		echo '<input type="hidden" name="campaign_id" value="' . esc_attr( (string) $form_id ) . '">';
 		wp_nonce_field( 'bachs_donation_start' );
@@ -95,11 +97,37 @@ final class DonationShortcode {
 			echo '<p class="bachs-donation-custom"><label for="' . esc_attr( $form_key . 'custom' ) . '">' . esc_html__( 'Or enter a different amount', 'bachs-donations' ) . '</label><br><input id="' . esc_attr( $form_key . 'custom' ) . '" type="number" name="custom_amount" min="0.01" step="0.01" inputmode="decimal"></p>';
 		}
 		echo '<p class="bachs-donation-validation" role="alert" hidden>' . esc_html__( 'Choose a suggested amount or enter a custom amount to continue.', 'bachs-donations' ) . '</p>';
-		echo '<p><label for="' . esc_attr( $form_key . 'name' ) . '">' . esc_html__( 'Your name (optional)', 'bachs-donations' ) . '</label><br><input id="' . esc_attr( $form_key . 'name' ) . '" type="text" name="name" maxlength="191" autocomplete="name"></p>';
+		if ( $config['donor_name'] ) {
+			echo '<p><label for="' . esc_attr( $form_key . 'name' ) . '">' . esc_html__( 'Your name', 'bachs-donations' ) . ( $config['donor_name_required'] ? '' : ' (' . esc_html__( 'optional', 'bachs-donations' ) . ')' ) . '</label><br><input id="' . esc_attr( $form_key . 'name' ) . '" type="text" name="name" maxlength="191" autocomplete="name" ' . ( $config['donor_name_required'] ? 'required' : '' ) . '></p>';
+		}
 		echo '<p><label for="' . esc_attr( $form_key . 'email' ) . '">' . esc_html__( 'Email address', 'bachs-donations' ) . '</label><br><input required id="' . esc_attr( $form_key . 'email' ) . '" type="email" name="email" maxlength="191" autocomplete="email"></p>';
+		if ( $config['donor_phone'] ) {
+			echo '<p><label for="' . esc_attr( $form_key . 'phone' ) . '">' . esc_html__( 'Phone number', 'bachs-donations' ) . ( $config['donor_phone_required'] ? '' : ' (' . esc_html__( 'optional', 'bachs-donations' ) . ')' ) . '</label><br><input id="' . esc_attr( $form_key . 'phone' ) . '" type="tel" name="phone" maxlength="16" autocomplete="tel" inputmode="tel" pattern="\+[1-9][0-9]{6,14}" placeholder="+2348012345678" ' . ( $config['donor_phone_required'] ? 'required' : '' ) . '><small>' . esc_html__( 'Include the country code, for example +2348012345678.', 'bachs-donations' ) . '</small></p>';
+		}
+		foreach ( $config['custom_fields'] as $custom_field ) {
+			$field_id = $form_key . 'custom-' . $custom_field['key'];
+			$required = $custom_field['required'] ? ' required' : '';
+			if ( 'checkbox' === $custom_field['type'] ) {
+				echo '<p class="bachs-donation-custom-field bachs-donation-custom-field--checkbox"><label for="' . esc_attr( $field_id ) . '"><input id="' . esc_attr( $field_id ) . '" type="checkbox" name="custom_fields[' . esc_attr( $custom_field['key'] ) . ']" value="1"' . $required . '> ' . esc_html( $custom_field['label'] ) . '</label></p>';
+				continue;
+			}
+			echo '<p class="bachs-donation-custom-field"><label for="' . esc_attr( $field_id ) . '">' . esc_html( $custom_field['label'] ) . ( $custom_field['required'] ? '' : ' (' . esc_html__( 'optional', 'bachs-donations' ) . ')' ) . '</label><br>';
+			if ( 'textarea' === $custom_field['type'] ) {
+				echo '<textarea id="' . esc_attr( $field_id ) . '" name="custom_fields[' . esc_attr( $custom_field['key'] ) . ']" maxlength="2000" rows="3"' . $required . '></textarea>';
+			} elseif ( 'select' === $custom_field['type'] ) {
+				echo '<select id="' . esc_attr( $field_id ) . '" name="custom_fields[' . esc_attr( $custom_field['key'] ) . ']"' . $required . '><option value="">' . esc_html__( 'Choose an option', 'bachs-donations' ) . '</option>';
+				foreach ( $custom_field['options'] as $option ) {
+					echo '<option value="' . esc_attr( $option ) . '">' . esc_html( $option ) . '</option>';
+				}
+				echo '</select>';
+			} else {
+				echo '<input id="' . esc_attr( $field_id ) . '" type="text" name="custom_fields[' . esc_attr( $custom_field['key'] ) . ']" maxlength="1000"' . $required . '>';
+			}
+			echo '</p>';
+		}
 		echo '<div class="bachs-donation-honeypot" aria-hidden="true"><label for="' . esc_attr( $form_key . 'website' ) . '">' . esc_html__( 'Leave this field empty', 'bachs-donations' ) . '</label><input id="' . esc_attr( $form_key . 'website' ) . '" name="website" type="text" tabindex="-1" autocomplete="off"></div>';
-		echo '<p class="bachs-donation-privacy">' . esc_html__( 'Payment is completed on the secure checkout hosted by our payment provider. Your name and email are shared with the provider to process your donation.', 'bachs-donations' ) . '</p>';
-		echo '<p><button type="submit">' . esc_html__( 'Continue to secure payment', 'bachs-donations' ) . '</button></p></form>';
+		echo '<p class="bachs-donation-privacy">' . esc_html__( 'Payment is completed on the secure checkout hosted by our payment provider. The contact details you provide are shared with the provider to process your donation. Answers to extra questions are stored by the organization.', 'bachs-donations' ) . '</p>';
+		echo '<p><button type="submit">' . esc_html( $config['button_text'] ) . '</button></p></form>';
 	}
 
 	/** Show confirmed progress in the fundraiser's goal currency only. */
@@ -110,7 +138,7 @@ final class DonationShortcode {
 		$current = DonationsStore::campaign_total( $form_id, $config['goal_currency'] );
 		$target = (float) $config['goal_amount'];
 		$percent = $target > 0 ? min( 100, ( $current / $target ) * 100 ) : 0;
-		echo '<div class="bachs-donation-goal"><p><strong>' . esc_html( $config['goal_currency'] . ' ' . number_format_i18n( $current, 2 ) ) . '</strong> ' . esc_html__( 'raised of', 'bachs-donations' ) . ' ' . esc_html( $config['goal_currency'] . ' ' . number_format_i18n( $target, 2 ) ) . '</p><progress value="' . esc_attr( (string) $percent ) . '" max="100" aria-label="' . esc_attr( sprintf( __( '%1$s percent of the %2$s goal raised', 'bachs-donations' ), number_format_i18n( $percent, 0 ), $config['goal_currency'] ) ) . '">' . esc_html( number_format_i18n( $percent, 0 ) ) . '%</progress></div>';
+		echo '<div class="bachs-donation-goal" style="--bachs-donations-accent:' . esc_attr( $config['accent_color'] ) . '"><p><strong>' . esc_html( $config['goal_currency'] . ' ' . number_format_i18n( $current, 2 ) ) . '</strong> ' . esc_html__( 'raised of', 'bachs-donations' ) . ' ' . esc_html( $config['goal_currency'] . ' ' . number_format_i18n( $target, 2 ) ) . '</p><progress value="' . esc_attr( (string) $percent ) . '" max="100" aria-label="' . esc_attr( sprintf( __( '%1$s percent of the %2$s goal raised', 'bachs-donations' ), number_format_i18n( $percent, 0 ), $config['goal_currency'] ) ) . '">' . esc_html( number_format_i18n( $percent, 0 ) ) . '%</progress></div>';
 	}
 
 	private static function render_return_state( $token ) {
@@ -133,7 +161,7 @@ final class DonationShortcode {
 
 	private static function render_result_notice( $result ) {
 		$messages = array(
-			'invalid' => __( 'Check the amount, currency, and email address, then try again.', 'bachs-donations' ),
+			'invalid' => __( 'Check the required fields, donation amount, and currency, then try again.', 'bachs-donations' ),
 			'unavailable' => __( 'We could not start secure checkout. Please try again or contact the organization.', 'bachs-donations' ),
 			'rate_limited' => __( 'Too many donation attempts came from this connection. Please wait a few minutes and try again.', 'bachs-donations' ),
 		);

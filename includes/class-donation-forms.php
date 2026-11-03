@@ -2,10 +2,9 @@
 /**
  * Donation form content type and per-form configuration.
  *
- * Each donation form is a normal WordPress page-like post: its title, story,
- * excerpt, and featured image are edited with the familiar WordPress editor.
- * Payment credentials remain global, while amounts and accepted currencies
- * can be adjusted for each fundraiser.
+ * Each donation form is a public WordPress post managed through the focused
+ * fundraising builder. Payment credentials remain global, while giving
+ * options, donor fields, and appearance can be set for each fundraiser.
  *
  * @package BachsDonations
  */
@@ -20,17 +19,13 @@ final class DonationForms {
 	const POST_TYPE = 'bachs_donation_form';
 	const META_KEY  = '_bachs_donations_form_settings';
 
-	/** Connect the post type, editor settings, and public form page. */
+	/** Connect the post type and public form page. */
 	public static function register_hooks() {
 		add_action( 'init', array( __CLASS__, 'register_post_type' ) );
-		add_action( 'add_meta_boxes_' . self::POST_TYPE, array( __CLASS__, 'add_meta_box' ) );
-		add_action( 'save_post_' . self::POST_TYPE, array( __CLASS__, 'save_meta' ), 10, 2 );
 		add_filter( 'the_content', array( __CLASS__, 'append_public_form' ) );
-		add_filter( 'manage_' . self::POST_TYPE . '_posts_columns', array( __CLASS__, 'admin_columns' ) );
-		add_action( 'manage_' . self::POST_TYPE . '_posts_custom_column', array( __CLASS__, 'render_admin_column' ), 10, 2 );
 	}
 
-	/** Register a public donation-form post type with the block editor enabled. */
+	/** Register public donation pages while keeping creation in the fundraiser builder. */
 	public static function register_post_type() {
 		$labels = array(
 			'name'                  => __( 'Donation Forms', 'bachs-donations' ),
@@ -57,8 +52,8 @@ final class DonationForms {
 				'labels'             => $labels,
 				'public'             => true,
 				'publicly_queryable' => true,
-				'show_ui'            => true,
-				'show_in_menu'       => 'bachs-donations',
+				'show_ui'            => false,
+				'show_in_menu'       => false,
 				'show_in_rest'       => true,
 				'has_archive'        => false,
 				'rewrite'            => array( 'slug' => 'donate', 'with_front' => false ),
@@ -69,70 +64,11 @@ final class DonationForms {
 		);
 	}
 
-	/** Add the campaign-specific checkout options to the editor. */
-	public static function add_meta_box() {
-		add_meta_box(
-			'bachs-donation-form-options',
-			__( 'Donation Form Settings', 'bachs-donations' ),
-			array( __CLASS__, 'render_meta_box' ),
-			self::POST_TYPE,
-			'normal',
-			'high'
-		);
-	}
-
-	/** Render the settings box shown below the form story editor. */
-	public static function render_meta_box( $post ) {
-		$settings  = self::settings( (int) $post->ID );
-		$available = Settings::enabled_currencies();
-		wp_nonce_field( 'bachs_donation_form_save_' . (int) $post->ID, 'bachs_donation_form_nonce' );
-		echo '<p>' . esc_html__( 'The form page uses your title, story, excerpt, and featured image. Configure its accepted currencies and suggested gifts here.', 'bachs-donations' ) . '</p>';
-		echo '<fieldset><legend><strong>' . esc_html__( 'Accepted currencies', 'bachs-donations' ) . '</strong></legend>';
-		foreach ( array( 'USD' => __( 'US Dollar (USD)', 'bachs-donations' ), 'NGN' => __( 'Nigerian Naira (NGN)', 'bachs-donations' ) ) as $currency => $label ) {
-			$disabled = ! in_array( $currency, $available, true );
-			echo '<label style="display:inline-block;margin:8px 18px 8px 0"><input type="checkbox" name="bachs_form[currencies][]" value="' . esc_attr( $currency ) . '" ' . checked( in_array( $currency, $settings['currencies'], true ), true, false ) . disabled( $disabled, true, false ) . '> ' . esc_html( $label ) . '</label>';
-		}
-		echo '<p class="description">' . esc_html__( 'A currency must also be enabled in Fundraising → Bachs Donations before it can be accepted.', 'bachs-donations' ) . '</p></fieldset>';
-		echo '<h4>' . esc_html__( 'Payment methods', 'bachs-donations' ) . '</h4>';
-		if ( in_array( 'USD', $settings['currencies'], true ) ) {
-			echo '<p><strong>' . esc_html__( 'USD', 'bachs-donations' ) . '</strong><br><label><input type="checkbox" name="bachs_form[payment_methods][USD][]" value="USD_CARD" ' . checked( in_array( 'USD_CARD', $settings['payment_methods']['USD'], true ), true, false ) . '> ' . esc_html__( 'Card', 'bachs-donations' ) . '</label></p>';
-		}
-		if ( in_array( 'NGN', $settings['currencies'], true ) ) {
-			echo '<p><strong>' . esc_html__( 'NGN', 'bachs-donations' ) . '</strong><br><label style="margin-right:16px"><input type="checkbox" name="bachs_form[payment_methods][NGN][]" value="NGN_CARD" ' . checked( in_array( 'NGN_CARD', $settings['payment_methods']['NGN'], true ), true, false ) . '> ' . esc_html__( 'Card', 'bachs-donations' ) . '</label><label><input type="checkbox" name="bachs_form[payment_methods][NGN][]" value="NGN_BANK_TRANSFER" ' . checked( in_array( 'NGN_BANK_TRANSFER', $settings['payment_methods']['NGN'], true ), true, false ) . '> ' . esc_html__( 'Bank transfer', 'bachs-donations' ) . '</label></p>';
-		}
-		echo '<p class="description">' . esc_html__( 'A selected method is offered only when it is active for your Bachs account and eligible for the donation.', 'bachs-donations' ) . '</p>';
-
-		echo '<p><label for="bachs-form-default-currency"><strong>' . esc_html__( 'Default currency', 'bachs-donations' ) . '</strong></label><br><select id="bachs-form-default-currency" name="bachs_form[default_currency]">';
-		foreach ( $settings['currencies'] as $currency ) {
-			echo '<option value="' . esc_attr( $currency ) . '" ' . selected( $settings['default_currency'], $currency, false ) . '>' . esc_html( $currency ) . '</option>';
-		}
-		echo '</select></p>';
-
-		foreach ( array( 'USD' => __( 'Suggested USD amounts', 'bachs-donations' ), 'NGN' => __( 'Suggested NGN amounts', 'bachs-donations' ) ) as $currency => $label ) {
-			echo '<p><label for="bachs-form-amounts-' . esc_attr( strtolower( $currency ) ) . '"><strong>' . esc_html( $label ) . '</strong></label><br><input class="regular-text" id="bachs-form-amounts-' . esc_attr( strtolower( $currency ) ) . '" name="bachs_form[amounts][' . esc_attr( $currency ) . ']" value="' . esc_attr( implode( ', ', $settings['amounts'][ $currency ] ) ) . '"><br><span class="description">' . esc_html__( 'Separate amounts with commas. For example: 10, 25, 50, 100. Maximum eight amounts.', 'bachs-donations' ) . '</span></p>';
-		}
-
-		echo '<p><label><input type="checkbox" name="bachs_form[custom_amount]" value="1" ' . checked( $settings['custom_amount'], true, false ) . '> ' . esc_html__( 'Allow donors to enter a custom amount', 'bachs-donations' ) . '</label></p>';
-		echo '<hr><h4>' . esc_html__( 'Optional fundraising goal', 'bachs-donations' ) . '</h4>';
-		echo '<p><label for="bachs-form-goal-amount">' . esc_html__( 'Goal amount', 'bachs-donations' ) . '</label><br><input id="bachs-form-goal-amount" type="number" name="bachs_form[goal_amount]" min="0" step="0.01" value="' . esc_attr( $settings['goal_amount'] ) . '"> <select name="bachs_form[goal_currency]" aria-label="' . esc_attr__( 'Goal currency', 'bachs-donations' ) . '">';
-		foreach ( $settings['currencies'] as $currency ) {
-			echo '<option value="' . esc_attr( $currency ) . '" ' . selected( $settings['goal_currency'], $currency, false ) . '>' . esc_html( $currency ) . '</option>';
-		}
-		echo '</select></p><p class="description">' . esc_html__( 'The progress bar counts confirmed donations in this currency only. No currency conversion is assumed.', 'bachs-donations' ) . '</p>';
-		echo '<p class="description"><strong>' . esc_html__( 'Embed this form elsewhere:', 'bachs-donations' ) . '</strong> <code>[bachs_donation_form id="' . (int) $post->ID . '"]</code></p>';
-	}
-
-	/** Save sanitized form settings after checking the editor nonce and capability. */
-	public static function save_meta( $post_id, $post ) {
-		if ( ! isset( $_POST['bachs_donation_form_nonce'] ) || ! is_scalar( $_POST['bachs_donation_form_nonce'] ) ) {
-			return;
-		}
-		$nonce = sanitize_text_field( wp_unslash( (string) $_POST['bachs_donation_form_nonce'] ) );
-		if ( ! wp_verify_nonce( $nonce, 'bachs_donation_form_save_' . (int) $post_id ) || ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) || wp_is_post_revision( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
-			return;
-		}
-
-		$posted = isset( $_POST['bachs_form'] ) && is_array( $_POST['bachs_form'] ) ? wp_unslash( $_POST['bachs_form'] ) : array();
+	/** Sanitize and store all payment, field, goal, and visual options for a form. */
+	public static function save_settings( $post_id, $posted, $builder_submission = false ) {
+		$posted = is_array( $posted ) ? $posted : array();
+		$submitted_amounts = isset( $posted['amounts'] ) && is_array( $posted['amounts'] ) ? $posted['amounts'] : array();
+		$submitted_methods = isset( $posted['payment_methods'] ) && is_array( $posted['payment_methods'] ) ? $posted['payment_methods'] : array();
 		$global_currencies = Settings::enabled_currencies();
 		$currencies = array();
 		if ( isset( $posted['currencies'] ) && is_array( $posted['currencies'] ) ) {
@@ -156,7 +92,7 @@ final class DonationForms {
 
 		$amounts = array();
 		foreach ( array( 'USD', 'NGN' ) as $currency ) {
-			$value = isset( $posted['amounts'][ $currency ] ) && is_scalar( $posted['amounts'][ $currency ] ) ? (string) $posted['amounts'][ $currency ] : '';
+			$value = isset( $submitted_amounts[ $currency ] ) && is_scalar( $submitted_amounts[ $currency ] ) ? (string) $submitted_amounts[ $currency ] : '';
 			$amounts[ $currency ] = self::sanitize_amounts( $value );
 		}
 		$allow_custom = ! empty( $posted['custom_amount'] );
@@ -169,7 +105,7 @@ final class DonationForms {
 			'NGN' => array( 'NGN_CARD', 'NGN_BANK_TRANSFER' ),
 		);
 		foreach ( array( 'USD', 'NGN' ) as $currency ) {
-			$submitted = isset( $posted['payment_methods'][ $currency ] ) && is_array( $posted['payment_methods'][ $currency ] ) ? $posted['payment_methods'][ $currency ] : array();
+			$submitted = isset( $submitted_methods[ $currency ] ) && is_array( $submitted_methods[ $currency ] ) ? $submitted_methods[ $currency ] : array();
 			foreach ( $submitted as $method ) {
 				if ( is_scalar( $method ) ) {
 					$method = strtoupper( sanitize_text_field( (string) $method ) );
@@ -199,6 +135,13 @@ final class DonationForms {
 		if ( ! in_array( $goal_currency, $currencies, true ) ) {
 			$goal_currency = $default;
 		}
+		$accent_input = isset( $posted['accent_color'] ) && is_scalar( $posted['accent_color'] ) ? (string) $posted['accent_color'] : '';
+		$accent_color = sanitize_hex_color( $accent_input );
+		$custom_fields = isset( $posted['custom_fields'] ) && is_array( $posted['custom_fields'] ) ? self::sanitize_custom_fields( $posted['custom_fields'] ) : array();
+		$form_style = isset( $posted['form_style'] ) && is_string( $posted['form_style'] ) && in_array( $posted['form_style'], array( 'soft', 'outlined', 'minimal' ), true ) ? $posted['form_style'] : 'soft';
+		$corner_style = isset( $posted['corner_style'] ) && is_string( $posted['corner_style'] ) && in_array( $posted['corner_style'], array( 'rounded', 'square' ), true ) ? $posted['corner_style'] : 'rounded';
+		$button_text = isset( $posted['button_text'] ) && is_scalar( $posted['button_text'] ) ? sanitize_text_field( (string) $posted['button_text'] ) : '';
+		$button_text = '' !== $button_text ? wp_html_excerpt( $button_text, 48, '' ) : __( 'Continue to secure payment', 'bachs-donations' );
 
 		update_post_meta(
 			$post_id,
@@ -211,6 +154,15 @@ final class DonationForms {
 				'custom_amount'    => $allow_custom,
 				'goal_amount'      => false === $goal_amount ? '' : $goal_amount,
 				'goal_currency'    => $goal_currency,
+				'donor_name'       => isset( $posted['donor_name'] ) ? ! empty( $posted['donor_name'] ) : ! $builder_submission,
+				'donor_name_required' => ! empty( $posted['donor_name_required'] ) && ( ! isset( $posted['donor_name'] ) || ! empty( $posted['donor_name'] ) ),
+				'donor_phone'      => ! empty( $posted['donor_phone'] ),
+				'donor_phone_required' => ! empty( $posted['donor_phone_required'] ) && ! empty( $posted['donor_phone'] ),
+				'custom_fields'    => $custom_fields,
+				'accent_color'     => $accent_color ? $accent_color : '#176b52',
+				'form_style'       => $form_style,
+				'corner_style'     => $corner_style,
+				'button_text'      => $button_text,
 			)
 		);
 	}
@@ -219,6 +171,8 @@ final class DonationForms {
 	public static function settings( $post_id = 0 ) {
 		$stored = $post_id ? get_post_meta( $post_id, self::META_KEY, true ) : array();
 		$stored = is_array( $stored ) ? $stored : array();
+		$stored_amount_config = isset( $stored['amounts'] ) && is_array( $stored['amounts'] ) ? $stored['amounts'] : array();
+		$stored_method_config = isset( $stored['payment_methods'] ) && is_array( $stored['payment_methods'] ) ? $stored['payment_methods'] : array();
 		$global_currencies = Settings::enabled_currencies();
 		$currencies = array();
 		if ( isset( $stored['currencies'] ) && is_array( $stored['currencies'] ) ) {
@@ -242,14 +196,14 @@ final class DonationForms {
 		);
 		$amounts = array();
 		foreach ( array( 'USD', 'NGN' ) as $currency ) {
-			if ( isset( $stored['amounts'][ $currency ] ) && is_array( $stored['amounts'][ $currency ] ) ) {
-				$stored_amounts = array();
-				foreach ( $stored['amounts'][ $currency ] as $amount ) {
+			if ( isset( $stored_amount_config[ $currency ] ) && is_array( $stored_amount_config[ $currency ] ) ) {
+				$currency_amounts = array();
+				foreach ( $stored_amount_config[ $currency ] as $amount ) {
 					if ( is_scalar( $amount ) ) {
-						$stored_amounts[] = (string) $amount;
+						$currency_amounts[] = (string) $amount;
 					}
 				}
-				$amounts[ $currency ] = self::sanitize_amounts( implode( ',', $stored_amounts ) );
+				$amounts[ $currency ] = self::sanitize_amounts( implode( ',', $currency_amounts ) );
 			} else {
 				$amounts[ $currency ] = $amount_defaults[ $currency ];
 			}
@@ -260,9 +214,9 @@ final class DonationForms {
 		);
 		$payment_methods = array();
 		foreach ( array( 'USD', 'NGN' ) as $currency ) {
-			$stored_methods = isset( $stored['payment_methods'][ $currency ] ) && is_array( $stored['payment_methods'][ $currency ] ) ? $stored['payment_methods'][ $currency ] : $available_methods[ $currency ];
-			$stored_methods = array_filter( $stored_methods, 'is_string' );
-			$payment_methods[ $currency ] = array_values( array_intersect( $stored_methods, $available_methods[ $currency ] ) );
+			$currency_methods = isset( $stored_method_config[ $currency ] ) && is_array( $stored_method_config[ $currency ] ) ? $stored_method_config[ $currency ] : $available_methods[ $currency ];
+			$currency_methods = array_filter( $currency_methods, 'is_string' );
+			$payment_methods[ $currency ] = array_values( array_intersect( $currency_methods, $available_methods[ $currency ] ) );
 			if ( in_array( $currency, $currencies, true ) && empty( $payment_methods[ $currency ] ) ) {
 				$payment_methods[ $currency ] = $available_methods[ $currency ];
 			}
@@ -275,6 +229,9 @@ final class DonationForms {
 		if ( ! in_array( $goal_currency, $currencies, true ) ) {
 			$goal_currency = $default;
 		}
+		$stored_accent = isset( $stored['accent_color'] ) && is_string( $stored['accent_color'] ) ? sanitize_hex_color( $stored['accent_color'] ) : false;
+		$form_style = isset( $stored['form_style'] ) && is_string( $stored['form_style'] ) && in_array( $stored['form_style'], array( 'soft', 'outlined', 'minimal' ), true ) ? $stored['form_style'] : 'soft';
+		$corner_style = isset( $stored['corner_style'] ) && is_string( $stored['corner_style'] ) && in_array( $stored['corner_style'], array( 'rounded', 'square' ), true ) ? $stored['corner_style'] : 'rounded';
 		return array(
 			'currencies'       => $currencies,
 			'default_currency' => $default,
@@ -283,7 +240,86 @@ final class DonationForms {
 			'custom_amount'    => isset( $stored['custom_amount'] ) ? (bool) $stored['custom_amount'] : true,
 			'goal_amount'      => $goal_amount,
 			'goal_currency'    => $goal_currency,
+			'donor_name'       => ! isset( $stored['donor_name'] ) || (bool) $stored['donor_name'],
+			'donor_name_required' => isset( $stored['donor_name_required'] ) && (bool) $stored['donor_name_required'],
+			'donor_phone'      => isset( $stored['donor_phone'] ) && (bool) $stored['donor_phone'],
+			'donor_phone_required' => isset( $stored['donor_phone_required'] ) && (bool) $stored['donor_phone_required'],
+			'custom_fields'    => isset( $stored['custom_fields'] ) && is_array( $stored['custom_fields'] ) ? self::sanitize_custom_fields( $stored['custom_fields'] ) : array(),
+			'accent_color'     => $stored_accent ? $stored_accent : '#176b52',
+			'form_style'       => $form_style,
+			'corner_style'     => $corner_style,
+			'button_text'      => isset( $stored['button_text'] ) && is_string( $stored['button_text'] ) ? wp_html_excerpt( sanitize_text_field( $stored['button_text'] ), 48, '' ) : __( 'Continue to secure payment', 'bachs-donations' ),
 		);
+	}
+
+	/** Sanitize and bound custom donor questions stored with a form. */
+	public static function sanitize_custom_fields( $fields ) {
+		if ( ! is_array( $fields ) ) {
+			return array();
+		}
+		$clean = array();
+		$used_keys = array();
+		foreach ( array_slice( $fields, 0, 10, true ) as $field ) {
+			if ( ! is_array( $field ) ) {
+				continue;
+			}
+			$label = isset( $field['label'] ) && is_scalar( $field['label'] ) ? wp_html_excerpt( sanitize_text_field( (string) $field['label'] ), 80, '' ) : '';
+			$type = isset( $field['type'] ) && is_string( $field['type'] ) ? sanitize_key( $field['type'] ) : '';
+			if ( '' === $label || ! in_array( $type, array( 'text', 'textarea', 'select', 'checkbox' ), true ) ) {
+				continue;
+			}
+			$key = isset( $field['key'] ) && is_scalar( $field['key'] ) ? sanitize_key( (string) $field['key'] ) : '';
+			if ( ! preg_match( '/^[a-f0-9]{12}$/', $key ) || isset( $used_keys[ $key ] ) ) {
+				$key = substr( str_replace( '-', '', wp_generate_uuid4() ), 0, 12 );
+			}
+			$used_keys[ $key ] = true;
+			$options = array();
+			if ( 'select' === $type ) {
+				$raw_options = isset( $field['options'] ) && is_array( $field['options'] ) ? $field['options'] : ( isset( $field['options'] ) && is_string( $field['options'] ) ? preg_split( '/[\r\n]+/', $field['options'] ) : array() );
+				foreach ( array_slice( $raw_options, 0, 20 ) as $option ) {
+					if ( is_scalar( $option ) ) {
+						$option = wp_html_excerpt( sanitize_text_field( (string) $option ), 80, '' );
+						if ( '' !== $option && ! in_array( $option, $options, true ) ) {
+							$options[] = $option;
+						}
+					}
+				}
+				if ( count( $options ) < 2 ) {
+					continue;
+				}
+			}
+			$clean[] = array(
+				'key'      => $key,
+				'label'    => $label,
+				'type'     => $type,
+				'required' => ! empty( $field['required'] ),
+				'options'  => $options,
+			);
+		}
+		return $clean;
+	}
+
+	/** Choose readable button text for a user-selected brand color. */
+	public static function contrast_text( $hex_color ) {
+		$hex_color = sanitize_hex_color( $hex_color );
+		if ( ! $hex_color ) {
+			return '#ffffff';
+		}
+		$hex = ltrim( $hex_color, '#' );
+		if ( 3 === strlen( $hex ) ) {
+			$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+		}
+		$red = hexdec( substr( $hex, 0, 2 ) ) / 255;
+		$green = hexdec( substr( $hex, 2, 2 ) ) / 255;
+		$blue = hexdec( substr( $hex, 4, 2 ) ) / 255;
+		$channels = array( $red, $green, $blue );
+		foreach ( $channels as &$channel ) {
+			$channel = $channel <= 0.03928 ? $channel / 12.92 : pow( ( $channel + 0.055 ) / 1.055, 2.4 );
+		}
+		$luminance = ( 0.2126 * $channels[0] ) + ( 0.7152 * $channels[1] ) + ( 0.0722 * $channels[2] );
+		$dark_contrast = ( $luminance + 0.05 ) / 0.05;
+		$light_contrast = 1.05 / ( $luminance + 0.05 );
+		return $dark_contrast >= $light_contrast ? '#15231d' : '#ffffff';
 	}
 
 	/** Append the donation form to a published form's normal WordPress content. */
@@ -296,42 +332,6 @@ final class DonationForms {
 			$content .= do_shortcode( '[bachs_donation_form id="' . get_the_ID() . '"]' );
 		}
 		return $content;
-	}
-
-	/** Add useful publishing and fundraising details to the form list screen. */
-	public static function admin_columns( $columns ) {
-		$updated = array();
-		foreach ( $columns as $key => $label ) {
-			$updated[ $key ] = $label;
-			if ( 'title' === $key ) {
-				$updated['bachs_currencies'] = __( 'Currencies', 'bachs-donations' );
-				$updated['bachs_gifts'] = __( 'Confirmed gifts', 'bachs-donations' );
-				$updated['bachs_raised'] = __( 'Raised', 'bachs-donations' );
-				$updated['bachs_shortcode'] = __( 'Embed shortcode', 'bachs-donations' );
-			}
-		}
-		return $updated;
-	}
-
-	/** Render per-form accepted currencies, confirmed totals, and embed code. */
-	public static function render_admin_column( $column, $post_id ) {
-		if ( 'bachs_currencies' === $column ) {
-			$config = self::settings( $post_id );
-			echo esc_html( implode( ', ', $config['currencies'] ) );
-		} elseif ( 'bachs_gifts' === $column || 'bachs_raised' === $column ) {
-			$summary = DonationsStore::campaign_summary( $post_id );
-			if ( 'bachs_gifts' === $column ) {
-				echo esc_html( number_format_i18n( $summary['count'] ) );
-			} else {
-				$totals = array();
-				foreach ( $summary['totals'] as $currency => $amount ) {
-					$totals[] = $currency . ' ' . number_format_i18n( $amount, 2 );
-				}
-				echo esc_html( empty( $totals ) ? '—' : implode( ' / ', $totals ) );
-			}
-		} elseif ( 'bachs_shortcode' === $column ) {
-			echo '<code>[bachs_donation_form id="' . absint( $post_id ) . '"]</code>';
-		}
 	}
 
 	/** Normalize comma/newline-separated amounts into safe preset values. */

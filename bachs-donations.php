@@ -3,7 +3,7 @@
  * Plugin Name: Bachs Donations
  * Plugin URI: https://github.com/iamnelsonizah/bachs-donations
  * Description: Hosted USD and NGN donation checkout for WordPress, powered by Bachs.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Author: Nelson Izah
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'BACHS_DONATIONS_VERSION', '0.3.0' );
+define( 'BACHS_DONATIONS_VERSION', '0.4.0' );
 define( 'BACHS_DONATIONS_FILE', __FILE__ );
 define( 'BACHS_DONATIONS_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -38,6 +38,7 @@ require_once BACHS_DONATIONS_DIR . 'includes/class-checkout-controller.php';
 require_once BACHS_DONATIONS_DIR . 'includes/class-reconciler.php';
 require_once BACHS_DONATIONS_DIR . 'includes/class-donation-shortcode.php';
 require_once BACHS_DONATIONS_DIR . 'includes/class-donation-forms.php';
+require_once BACHS_DONATIONS_DIR . 'includes/class-donation-form-builder.php';
 require_once BACHS_DONATIONS_DIR . 'includes/class-admin.php';
 require_once BACHS_DONATIONS_DIR . 'includes/class-reports.php';
 require_once BACHS_DONATIONS_DIR . 'includes/class-privacy.php';
@@ -67,6 +68,7 @@ function initialize() {
 	WebhookController::register_hooks();
 	DonationShortcode::register_hooks();
 	DonationForms::register_hooks();
+	DonationFormBuilder::register_hooks();
 	Admin::register_hooks();
 	Reports::register_hooks();
 	Privacy::register_hooks();

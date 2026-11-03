@@ -8,6 +8,7 @@
 
 .bachs-donation-form {
 	--bachs-donations-accent: #176b52;
+	--bachs-donations-button-text: #fff;
 	--bachs-donations-border: #d7dedb;
 	box-sizing: border-box;
 	max-width: 38rem;
@@ -26,6 +27,22 @@
 
 .bachs-donation-form p {
 	margin: 0 0 1.15rem;
+}
+
+.bachs-donation-form--outlined {
+	box-shadow: none;
+	border-width: 2px;
+}
+
+.bachs-donation-form--minimal {
+	padding: 0;
+	border-color: transparent;
+	background: transparent;
+	box-shadow: none;
+}
+
+.bachs-donation-form--square {
+	border-radius: 0;
 }
 
 .bachs-donation-amounts {
@@ -77,6 +94,7 @@
 .bachs-donation-amount-choice input:checked + span {
 	border-color: var(--bachs-donations-accent);
 	background: #edf6f1;
+	background: color-mix(in srgb, var(--bachs-donations-accent) 12%, #fff);
 	color: #124e3c;
 	box-shadow: inset 0 0 0 1px var(--bachs-donations-accent);
 }
@@ -104,6 +122,7 @@
 .bachs-donation-form input[type="text"],
 .bachs-donation-form input[type="email"],
 .bachs-donation-form input[type="number"],
+.bachs-donation-form input[type="tel"],
 .bachs-donation-form select {
 	width: 100%;
 	min-height: 2.8rem;
@@ -115,7 +134,20 @@
 	font: inherit;
 }
 
+.bachs-donation-form textarea {
+	width: 100%;
+	min-height: 5.5rem;
+	padding: .65rem .75rem;
+	border: 1px solid #9ba9a3;
+	border-radius: 6px;
+	background: #fff;
+	color: inherit;
+	font: inherit;
+	resize: vertical;
+}
+
 .bachs-donation-form input:focus,
+.bachs-donation-form textarea:focus,
 .bachs-donation-form select:focus,
 .bachs-donation-form button:focus-visible {
 	outline: 3px solid rgb(23 107 82 / 25%);
@@ -130,7 +162,7 @@
 	border: 0;
 	border-radius: 6px;
 	background: var(--bachs-donations-accent);
-	color: #fff;
+	color: var(--bachs-donations-button-text);
 	font: inherit;
 	font-weight: 700;
 	cursor: pointer;
@@ -138,6 +170,31 @@
 
 .bachs-donation-form button[type="submit"]:hover {
 	filter: brightness(.92);
+}
+
+.bachs-donation-form--square button[type="submit"],
+.bachs-donation-form--square input,
+.bachs-donation-form--square select,
+.bachs-donation-form--square .bachs-donation-amount-choice span {
+	border-radius: 0;
+}
+
+.bachs-donation-form small {
+	display: block;
+	margin-top: .35rem;
+	font-size: .85em;
+}
+
+.bachs-donation-custom-field--checkbox label {
+	display: flex;
+	align-items: flex-start;
+	gap: .55rem;
+}
+
+.bachs-donation-custom-field--checkbox input {
+	flex: 0 0 auto;
+	margin-top: .25rem;
+	accent-color: var(--bachs-donations-accent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -188,7 +245,7 @@
 	height: .85rem;
 	border: 0;
 	border-radius: 99px;
-	accent-color: #176b52;
+    accent-color: var(--bachs-donations-accent);
 }
 
 .bachs-donation-goal progress::-webkit-progress-bar {
@@ -198,5 +255,5 @@
 
 .bachs-donation-goal progress::-webkit-progress-value {
 	border-radius: 99px;
-	background: #176b52;
+    background: var(--bachs-donations-accent);
 }

@@ -38,18 +38,30 @@ final class Privacy {
 		$rows  = DonationsStore::by_email( $email, 100, ( max( 1, absint( $page ) ) - 1 ) * 100 );
 		$items = array();
 		foreach ( $rows as $row ) {
+			$custom_fields = isset( $row['donor_fields'] ) && is_string( $row['donor_fields'] ) ? json_decode( $row['donor_fields'], true ) : array();
+			$personal_data = array(
+				array( 'name' => __( 'Donor name', 'bachs-donations' ), 'value' => $row['donor_name'] ),
+				array( 'name' => __( 'Donor email', 'bachs-donations' ), 'value' => $row['donor_email'] ),
+				array( 'name' => __( 'Donor phone', 'bachs-donations' ), 'value' => $row['donor_phone'] ),
+			);
+			foreach ( is_array( $custom_fields ) ? $custom_fields : array() as $custom_field ) {
+				if ( is_array( $custom_field ) && isset( $custom_field['label'], $custom_field['value'] ) && is_string( $custom_field['label'] ) && is_string( $custom_field['value'] ) ) {
+					$personal_data[] = array( 'name' => $custom_field['label'], 'value' => $custom_field['value'] );
+				}
+			}
 			$items[] = array(
 				'group_id'    => 'bachs-donations',
 				'group_label' => __( 'Donations', 'bachs-donations' ),
 				'item_id'     => 'bachs-donation-' . (int) $row['id'],
-				'data'        => array(
-					array( 'name' => __( 'Donor name', 'bachs-donations' ), 'value' => $row['donor_name'] ),
-					array( 'name' => __( 'Donor email', 'bachs-donations' ), 'value' => $row['donor_email'] ),
-					array( 'name' => __( 'Donation reference', 'bachs-donations' ), 'value' => $row['reference'] ),
-					array( 'name' => __( 'Donation form', 'bachs-donations' ), 'value' => $row['campaign_title'] ),
-					array( 'name' => __( 'Amount', 'bachs-donations' ), 'value' => $row['currency'] . ' ' . $row['amount'] ),
-					array( 'name' => __( 'Payment status', 'bachs-donations' ), 'value' => $row['status'] ),
-					array( 'name' => __( 'Created at (UTC)', 'bachs-donations' ), 'value' => $row['created_at'] ),
+				'data'        => array_merge(
+					$personal_data,
+					array(
+						array( 'name' => __( 'Donation reference', 'bachs-donations' ), 'value' => $row['reference'] ),
+						array( 'name' => __( 'Donation form', 'bachs-donations' ), 'value' => $row['campaign_title'] ),
+						array( 'name' => __( 'Amount', 'bachs-donations' ), 'value' => $row['currency'] . ' ' . $row['amount'] ),
+						array( 'name' => __( 'Payment status', 'bachs-donations' ), 'value' => $row['status'] ),
+						array( 'name' => __( 'Created at (UTC)', 'bachs-donations' ), 'value' => $row['created_at'] ),
+					)
 				),
 			);
 		}
@@ -75,16 +87,16 @@ final class Privacy {
 		return array(
 			'items_removed'  => $result > 0,
 			'items_retained' => false,
-			'messages'       => array( __( 'Donor name, email, and public return token were removed. Donation transaction records are retained for accounting and fraud-prevention purposes.', 'bachs-donations' ) ),
+			'messages'       => array( __( 'Donor name, email, phone number, custom field responses, and public return token were removed. Donation transaction records are retained for accounting and fraud-prevention purposes.', 'bachs-donations' ) ),
 			'done'           => true,
 		);
 	}
 
 	public static function register_policy_content() {
 		if ( function_exists( 'wp_add_privacy_policy_content' ) ) {
-			$content = '<p>' . esc_html__( 'When a visitor makes a donation, this plugin stores the donor name (if provided), email address, donation form title, donation amount, currency, payment status, Bachs checkout and charge identifiers, and a random return-page token. The donor name and email are sent to Bachs to create the hosted checkout. Bachs processes the payment under its own privacy policy.', 'bachs-donations' ) . '</p>';
+			$content = '<p>' . esc_html__( 'When a visitor makes a donation, this plugin stores the donor name and phone number if the form requests them, email address, custom field responses, donation form title, donation amount, currency, payment status, Bachs checkout and charge identifiers, and a random return-page token. The donor name, email, and phone number are sent to Bachs to create the hosted checkout. Custom field responses are stored on this WordPress site and are not sent to Bachs. Bachs processes payment data under its own privacy policy.', 'bachs-donations' ) . '</p>';
 			$content .= '<p>' . esc_html__( 'To limit automated checkout creation, the plugin temporarily stores a keyed hash derived from the visitor IP address for up to 15 minutes. It does not store the raw IP address for this rate limit.', 'bachs-donations' ) . '</p>';
-			$content .= '<p>' . esc_html__( 'Donation records are retained in the site database for accounting and reconciliation. A privacy erasure request removes the donor name, email, and public return token while retaining transaction fields. This does not erase information held by Bachs; submit any required request to Bachs separately. Site administrators should set a retention period that follows their local legal and accounting requirements.', 'bachs-donations' ) . '</p>';
+			$content .= '<p>' . esc_html__( 'Donation records are retained in the site database for accounting and reconciliation. A privacy erasure request removes donor contact details, custom field responses, and the public return token while retaining transaction fields. This does not erase information held by Bachs; submit any required request to Bachs separately. Site administrators should set a retention period that follows their local legal and accounting requirements.', 'bachs-donations' ) . '</p>';
 			wp_add_privacy_policy_content( __( 'Bachs Donations', 'bachs-donations' ), wp_kses_post( $content ) );
 		}
 	}

@@ -13,6 +13,33 @@
 	margin: 0;
 }
 
+.bachs-payment-status {
+	max-width: 810px;
+	margin: 16px 0;
+	padding: 15px 18px;
+	border: 1px solid #d8e4dd;
+	border-left: 4px solid #c08b2c;
+	border-radius: 7px;
+	background: #fff;
+}
+
+.bachs-payment-status--ready {
+	border-left-color: #17834e;
+}
+
+.bachs-payment-status > strong {
+	font-size: 14px;
+}
+
+.bachs-payment-status p {
+	margin: 6px 0 10px;
+	color: #59665f;
+}
+
+.bachs-payment-status a:not(.button) {
+	font-weight: 600;
+}
+
 .bachs-fundraising-setup {
 	max-width: 850px;
 	margin: 20px 0;
@@ -56,4 +83,118 @@
 
 .bachs-fundraising-card strong {
 	font-size: 26px;
+}
+
+.bachs-payment-setup {
+	max-width: 1050px;
+}
+
+.bachs-payment-intro {
+	max-width: 760px;
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.bachs-connection-card {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+	margin: 20px 0;
+	padding: 19px 22px;
+	border: 1px solid #d6e3dc;
+	border-radius: 10px;
+	background: #fff;
+}
+
+.bachs-connection-card__icon {
+	width: 38px;
+	height: 38px;
+	flex: 0 0 38px;
+	border-radius: 10px;
+	background: #eaf4ef;
+	color: #176b52;
+	font-size: 21px;
+	line-height: 38px;
+	text-align: center;
+}
+
+.bachs-connection-card h2 {
+	margin: 0 0 6px;
+	font-size: 16px;
+}
+
+.bachs-connection-card p {
+	margin: 0 0 8px;
+	color: #59665f;
+}
+
+.bachs-connection-card__status {
+	margin-left: auto;
+	padding: 5px 10px;
+	border-radius: 20px;
+	font-size: 11px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.bachs-connection-card__status.is-ready {
+	background: #e6f4ec;
+	color: #14643e;
+}
+
+.bachs-connection-card__status.is-needed {
+	background: #fff5de;
+	color: #795100;
+}
+
+.bachs-payment-setup .form-table h2 {
+	margin: 12px 0 2px;
+}
+
+.bachs-webhook-setup {
+	margin: 18px 0;
+	padding: 18px 20px;
+	border: 1px solid #d6e3dc;
+	border-radius: 9px;
+	background: #fff;
+}
+
+.bachs-webhook-setup h2 {
+	margin-top: 0;
+}
+
+.bachs-webhook-copy {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.bachs-webhook-copy code {
+	padding: 8px 10px;
+	background: #f4f7f5;
+	word-break: break-all;
+}
+
+.bachs-donation-extra-responses {
+	margin-top: 7px;
+	font-size: 12px;
+}
+
+.bachs-donation-extra-responses summary {
+	color: #176b52;
+	cursor: pointer;
+}
+
+.bachs-donation-extra-responses dl {
+	margin: 7px 0 0;
+}
+
+.bachs-donation-extra-responses dt {
+	font-weight: 600;
+}
+
+.bachs-donation-extra-responses dd {
+	margin: 1px 0 7px;
+	color: #50575e;
 }

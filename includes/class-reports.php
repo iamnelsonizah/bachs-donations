@@ -121,7 +121,7 @@ final class Reports {
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename=bachs-donations-report-' . $range['from'] . '-to-' . $range['to'] . '.csv' );
 		$output = fopen( 'php://output', 'w' );
-		fputcsv( $output, array( 'Date (UTC)', 'Donation form', 'Reference', 'Currency', 'Amount', 'Status', 'Donor name', 'Donor email' ) );
+		fputcsv( $output, array( 'Date (UTC)', 'Donation form', 'Reference', 'Currency', 'Amount', 'Status', 'Donor name', 'Donor email', 'Donor phone', 'Additional responses (JSON)' ) );
 		$offset = 0;
 		$limit = 500;
 		while ( true ) {

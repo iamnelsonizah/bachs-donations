@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+- Replaced the editor-first fundraiser flow with a focused, accessible modal builder and live preview.
+- Added per-form colors, layout and corner styles, button text, optional donor name and phone fields, campaign image selection, and custom donor questions.
+- Added a clear Bachs Payment Setup screen for Sandbox/Live credentials, webhook configuration, and connection status.
+- Improved the Fundraising dashboard and forms list so a first-time administrator can create, publish, and share a form without opening the default WordPress editor.
+- Added donor phone and custom response handling to checkout, the donation ledger, CSV reports, privacy export, and erasure.
+- Updated the installation, payment setup, and form creation guides for the new workflow.
+
 ## 0.3.0
 
 - Replaced donation amount dropdowns with accessible, currency-aware suggested amount cards and inline validation.

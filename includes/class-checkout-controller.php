@@ -38,11 +38,27 @@ final class CheckoutController {
 			}
 		}
 		$form_settings = DonationForms::settings( $campaign_id );
+		$submitted_custom_fields = isset( $_POST['custom_fields'] ) && is_array( $_POST['custom_fields'] ) ? wp_unslash( $_POST['custom_fields'] ) : array();
+		$custom_field_responses = self::custom_field_responses( $submitted_custom_fields, $form_settings['custom_fields'] );
+		if ( false === $custom_field_responses ) {
+			self::redirect_with_result( $return_url, 'invalid' );
+		}
 
 		$currency = isset( $_POST['currency'] ) && is_scalar( $_POST['currency'] ) ? strtoupper( sanitize_text_field( (string) wp_unslash( $_POST['currency'] ) ) ) : '';
 		$email = isset( $_POST['email'] ) && is_scalar( $_POST['email'] ) ? sanitize_email( wp_unslash( (string) $_POST['email'] ) ) : '';
 		$name = isset( $_POST['name'] ) && is_scalar( $_POST['name'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['name'] ) ) : '';
+		$phone = isset( $_POST['phone'] ) && is_scalar( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['phone'] ) ) : '';
 		if ( ! is_email( $email ) || strlen( $email ) > 191 || strlen( $name ) > 191 ) {
+			self::redirect_with_result( $return_url, 'invalid' );
+		}
+		if ( ! $form_settings['donor_name'] ) {
+			$name = '';
+		} elseif ( $form_settings['donor_name_required'] && '' === trim( $name ) ) {
+			self::redirect_with_result( $return_url, 'invalid' );
+		}
+		if ( ! $form_settings['donor_phone'] ) {
+			$phone = '';
+		} elseif ( ( $form_settings['donor_phone_required'] && '' === $phone ) || ( '' !== $phone && ! preg_match( '/^\+[1-9][0-9]{6,14}$/', $phone ) ) ) {
 			self::redirect_with_result( $return_url, 'invalid' );
 		}
 
@@ -75,13 +91,13 @@ final class CheckoutController {
 		try {
 			$gateway = PaymentGateways::active();
 			$campaign_title = $campaign instanceof \WP_Post ? sanitize_text_field( $campaign->post_title ) : '';
-			$donation = DonationsStore::create( $currency, $amount, $name, $email, $campaign_id, $campaign_title );
+			$donation = DonationsStore::create( $currency, $amount, $name, $email, $campaign_id, $campaign_title, $phone, $custom_field_responses );
 			$token = $donation['token'];
 			$success_url = add_query_arg( 'bachs_donation', $token, remove_query_arg( array( 'bachs_donation', 'bachs_donation_result', 'bachs_donation_cancel' ), $return_url ) );
 			$cancel_url = add_query_arg( 'bachs_donation_cancel', $token, remove_query_arg( array( 'bachs_donation', 'bachs_donation_result', 'bachs_donation_cancel' ), $return_url ) );
 			$payload = array(
 				'pricing' => array( 'currency' => $currency, 'amount' => $amount ),
-				'customer' => array_filter( array( 'email' => $email, 'name' => $name ) ),
+				'customer' => array_filter( array( 'email' => $email, 'name' => $name, 'phone_number' => $phone ) ),
 				'payment_method_types' => $gateway->payment_method_types( $currency, $form_settings['payment_methods'][ $currency ] ),
 				'success_url' => $success_url,
 				'cancel_url'  => $cancel_url,
@@ -131,6 +147,53 @@ final class CheckoutController {
 		$decimal = isset( $parts[1] ) ? $parts[1] : '';
 		$normalized = $whole . '.' . str_pad( $decimal, 2, '0' );
 		return preg_match( '/[1-9]/', str_replace( '.', '', $normalized ) ) ? $normalized : false;
+	}
+
+	/** Validate donor answers against the fields configured on the published form. */
+	private static function custom_field_responses( $submitted, $definitions ) {
+		$submitted = is_array( $submitted ) ? $submitted : array();
+		$responses = array();
+		foreach ( DonationForms::sanitize_custom_fields( $definitions ) as $field ) {
+			$key = $field['key'];
+			$value = isset( $submitted[ $key ] ) && is_scalar( $submitted[ $key ] ) ? (string) $submitted[ $key ] : '';
+			if ( 'checkbox' === $field['type'] ) {
+				if ( '1' !== $value ) {
+					if ( $field['required'] ) {
+						return false;
+					}
+					continue;
+				}
+				$value = __( 'Yes', 'bachs-donations' );
+			} elseif ( 'select' === $field['type'] ) {
+				if ( '' === $value ) {
+					if ( $field['required'] ) {
+						return false;
+					}
+					continue;
+				}
+				$value = sanitize_text_field( $value );
+				if ( ! in_array( $value, $field['options'], true ) ) {
+					return false;
+				}
+			} elseif ( 'textarea' === $field['type'] ) {
+				$value = sanitize_textarea_field( $value );
+			} else {
+				$value = sanitize_text_field( $value );
+			}
+			if ( $field['required'] && '' === trim( $value ) ) {
+				return false;
+			}
+			if ( strlen( $value ) > ( 'textarea' === $field['type'] ? 2000 : 1000 ) ) {
+				return false;
+			}
+			if ( '' !== $value ) {
+				$responses[ $key ] = array(
+					'label' => $field['label'],
+					'value' => $value,
+				);
+			}
+		}
+		return $responses;
 	}
 
 	public static function is_bachs_checkout_url( $url ) {
