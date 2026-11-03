@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Replaced donation amount dropdowns with accessible, currency-aware suggested amount cards and inline validation.
+- Added date-filtered fundraising analytics with USD and NGN totals kept separate, daily trends, top forms, and protected CSV export.
+- Improved dashboard shortcuts, reports guidance, and admin page styling.
+- Updated the README and WordPress readme with report and donor-flow instructions.
+
 ## 0.2.0
 
 - Added a Donation Forms editor with per-form currencies, payment methods, default currency, suggested amounts, custom amount toggle, and optional fundraising goal.
