@@ -1,6 +1,7 @@
 <?php
 /**
  * Plugin Name: Bachs Donations
+ * Plugin URI: https://github.com/iamnelsonizah/bachs-donations
  * Description: Hosted USD and NGN donation checkout for WordPress, powered by Bachs.
  * Version: 0.1.0
  * Requires at least: 6.0

@@ -2,6 +2,8 @@
 
 Accept one-time donations in **USD and NGN** through Bachs hosted checkout. This standalone WordPress plugin does not require WooCommerce. It is designed for NGOs, charities, and community organizations that want donors to pay on Bachs' secure checkout page.
 
+Source repository: [github.com/iamnelsonizah/bachs-donations](https://github.com/iamnelsonizah/bachs-donations).
+
 > Early release: `0.1.0`. Test in Bachs Sandbox before enabling live donations. This release supports one-time payments only.
 
 ## Features
@@ -40,6 +42,12 @@ The currency selector controls what the donor is charged. Bachs settlement and w
 For local development, use a public HTTPS staging site or a secure tunnel that forwards to your development site. Bachs must be able to reach the webhook endpoint and the checkout return URLs.
 
 You can also install it manually by extracting the ZIP into `wp-content/plugins/bachs-donations/`, then activating it from the WordPress Plugins page.
+
+To install the source checkout directly, run this from `wp-content/plugins/`:
+
+```sh
+git clone https://github.com/iamnelsonizah/bachs-donations.git bachs-donations
+```
 
 ## Configure Bachs
 
