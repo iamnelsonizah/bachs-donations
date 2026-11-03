@@ -4,7 +4,7 @@ Accept one-time donations in **USD and NGN** through Bachs hosted checkout. This
 
 Source repository: [github.com/iamnelsonizah/bachs-donations](https://github.com/iamnelsonizah/bachs-donations).
 
-> Release `0.2.0`. Test in Bachs Sandbox before enabling live donations. The plugin supports one-time payments only.
+> Release `0.3.0`. Test in Bachs Sandbox before enabling live donations. The plugin supports one-time payments only.
 
 ## Features
 
@@ -17,8 +17,10 @@ Source repository: [github.com/iamnelsonizah/bachs-donations](https://github.com
 - USD checkout restricted to the USD card corridor.
 - NGN checkout offers NGN card and bank transfer corridors, subject to the NGO's Bachs account configuration.
 - Hosted Bachs checkout; this plugin never handles or stores card details.
+- Accessible suggested-amount cards, currency-aware choices, custom amounts, and clear required-field guidance.
 - Signed webhook verification, replay protection, and exact currency/amount matching before a donation is marked paid.
 - Donation ledger in WordPress admin linked to the form that received each gift, with manual checkout reconciliation if a webhook is delayed.
+- Fundraising reports with date and currency filters, USD/NGN totals and averages, daily trends, top forms, and protected CSV export.
 - Payment provider interface for checkout creation, reconciliation, webhook verification, and event normalization. Bachs is the initial provider.
 - WordPress personal-data exporter and eraser support.
 - Secret keys can be defined in `wp-config.php` instead of stored in WordPress settings.
@@ -101,9 +103,9 @@ During webhook-secret rotation, define the old secret temporarily as `BACHS_DONA
 1. In WordPress admin, open **Fundraising → Donation Forms → Add Donation Form**.
 2. Enter the form title and write the cause story in the WordPress editor. Add an excerpt and featured image if useful.
 3. In **Donation Form Settings**, choose the currencies this form should accept. A currency must first be enabled globally in **Fundraising → Bachs Donations**.
-4. Set the default currency, suggested amounts for USD and/or NGN, and whether donors can enter a custom amount.
+4. Set the default currency, suggested amounts for USD and/or NGN, choose the available payment methods, and decide whether donors can enter a custom amount.
 5. Optionally set a fundraising goal and currency. The progress indicator counts confirmed donations in that currency only. For example, an NGN goal does not include USD gifts.
-6. Publish the form. Visit the published page to see the story and donation checkout together.
+6. Publish the form. Visit the published page to see the story and donation checkout together. Donors choose a suggested amount card or enter a custom amount, select a currency when the form supports more than one, and continue to Bachs secure checkout.
 
 The page permalink is based on the form title, usually under `/donate/`. If that URL conflicts with an existing page or returns a 404, edit the form slug or open **Settings → Permalinks** and save the permalink settings once.
 
@@ -115,15 +117,17 @@ To place a form inside a custom page or page-builder layout, copy its form ID fr
 
 The legacy shortcode `[bachs_donation_form]` still works as a general form using global currencies and standard suggested amounts. New fundraisers should use a created donation form so that gifts are attributed to the correct cause.
 
-## View and reconcile donations
+## View donations and fundraising reports
 
-Administrators with the `manage_options` capability can open **Fundraising → Donations** to review the most recent 100 donation records, including the form that received each gift. For an unconfirmed payment with a checkout session, choose **Check payment** to retrieve the checkout status directly from Bachs. The plugin rechecks the amount and currency before updating the ledger. The **Fundraising** home provides a create-form shortcut, setup steps, and counts for forms and donations.
+Administrators with the `manage_options` capability can open **Fundraising → Donations** to review the most recent 100 donation records, including the form that received each gift. For an unconfirmed payment with a checkout session, choose **Check payment** to retrieve the checkout status directly from Bachs. The plugin rechecks the amount and currency before updating the ledger. If the list is empty, choose **Create a donation form** from the helpful empty state.
+
+Open **Fundraising → Reports** to view donation counts, confirmation rate, separate USD and NGN raised totals, average gifts, daily performance, and top forms. The report can be filtered by date (up to 366 days) and currency, and exported to CSV. CSV includes donor contact details and is limited to site administrators. Monetary totals are never combined across currencies. Date filters follow the site's timezone; daily groupings and CSV timestamps are labeled UTC.
 
 ## Payment scope and current limitations
 
 - This release handles one-time USD and NGN gifts. Recurring donations are not implemented.
 - USD currently uses the USD card corridor. NGN currently offers NGN card and NGN bank transfer. Which methods Bachs actually shows depends on the account's activation, enabled methods, amount, and eligibility.
-- The plugin provides one-time donation forms and optional per-form goals. Recurring schedules, donor accounts, PDF tax receipts, and advanced fundraising reports are not implemented.
+- The plugin provides one-time donation forms, optional per-form goals, and basic fundraising reports. Recurring schedules, donor accounts, and PDF tax receipts are not implemented.
 - The plugin does not send a custom donor receipt email; configure Bachs receipt settings for payment receipts and handle any NGO tax acknowledgements separately.
 - Donation data is stored in custom WordPress database tables and is not converted into WooCommerce orders.
 - Bachs checkout and payment processing remain subject to Bachs account terms, capabilities, and availability.

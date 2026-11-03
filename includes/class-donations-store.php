@@ -214,6 +214,55 @@ final class DonationsStore {
 		return is_array( $row ) ? array_map( 'absint', $row ) : array( 'donation_count' => 0, 'paid_count' => 0 );
 	}
 
+	/** Summarize attempts by currency and status for a date range. */
+	public static function report_summary( $start_utc, $end_utc, $currency = '' ) {
+		global $wpdb;
+		list( $where, $args ) = self::report_where( $start_utc, $end_utc, $currency );
+		$sql = 'SELECT currency, status, COUNT(*) AS donation_count, COALESCE(SUM(CASE WHEN status = %s THEN amount ELSE 0 END), 0) AS paid_total FROM ' . self::donations_table() . $where . ' GROUP BY currency, status';
+		array_unshift( $args, 'paid' );
+		return $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
+	}
+
+	/** Return confirmed daily totals grouped by UTC date and currency. */
+	public static function report_daily( $start_utc, $end_utc, $currency = '' ) {
+		global $wpdb;
+		list( $where, $args ) = self::report_where( $start_utc, $end_utc, $currency );
+		$sql = 'SELECT DATE(created_at) AS donation_day, currency, COUNT(*) AS gift_count, COALESCE(SUM(amount), 0) AS total FROM ' . self::donations_table() . $where . ' AND status = %s GROUP BY DATE(created_at), currency ORDER BY donation_day DESC';
+		$args[] = 'paid';
+		return $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
+	}
+
+	/** Return the highest-grossing forms per currency in a date range. */
+	public static function report_forms( $start_utc, $end_utc, $currency = '' ) {
+		global $wpdb;
+		list( $where, $args ) = self::report_where( $start_utc, $end_utc, $currency );
+		$sql = 'SELECT campaign_id, campaign_title, currency, COUNT(*) AS gift_count, COALESCE(SUM(amount), 0) AS total FROM ' . self::donations_table() . $where . ' AND status = %s GROUP BY campaign_id, campaign_title, currency ORDER BY total DESC LIMIT 20';
+		$args[] = 'paid';
+		return $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
+	}
+
+	/** Read one export page, keeping large CSV downloads bounded in memory. */
+	public static function report_export_rows( $start_utc, $end_utc, $currency = '', $limit = 500, $offset = 0 ) {
+		global $wpdb;
+		list( $where, $args ) = self::report_where( $start_utc, $end_utc, $currency );
+		$sql = 'SELECT created_at, campaign_title, reference, currency, amount, status, donor_name, donor_email FROM ' . self::donations_table() . $where . ' ORDER BY id ASC LIMIT %d OFFSET %d';
+		$args[] = min( 1000, max( 1, absint( $limit ) ) );
+		$args[] = max( 0, absint( $offset ) );
+		return $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
+	}
+
+	/** Build prepared date and optional-currency conditions for report queries. */
+	private static function report_where( $start_utc, $end_utc, $currency ) {
+		$where = ' WHERE created_at >= %s AND created_at < %s';
+		$args = array( $start_utc, $end_utc );
+		$currency = strtoupper( sanitize_text_field( $currency ) );
+		if ( in_array( $currency, array( 'USD', 'NGN' ), true ) ) {
+			$where .= ' AND currency = %s';
+			$args[] = $currency;
+		}
+		return array( $where, $args );
+	}
+
 	/** Return page of personal donation data for the WordPress privacy exporter. */
 	public static function by_email( $email, $limit = 100, $offset = 0 ) {
 		global $wpdb;

@@ -14,7 +14,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Admin {
 	public static function register_hooks() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_page' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'admin_post_bachs_donations_reconcile', array( __CLASS__, 'reconcile' ) );
+	}
+
+	/** Load fundraising admin styles only on plugin screens. */
+	public static function enqueue_assets( $hook_suffix ) {
+		if ( false !== strpos( (string) $hook_suffix, 'bachs-donations' ) ) {
+			wp_enqueue_style( 'bachs-donations-admin', plugins_url( 'assets/css/admin.css', BACHS_DONATIONS_FILE ), array(), BACHS_DONATIONS_VERSION );
+		}
 	}
 
 	public static function register_page() {
@@ -38,16 +46,16 @@ final class Admin {
 		$summary = DonationsStore::summary();
 		$counts = wp_count_posts( DonationForms::POST_TYPE );
 		$form_count = $counts && isset( $counts->publish ) ? (int) $counts->publish : 0;
-		echo '<div class="wrap"><h1>' . esc_html__( 'Fundraising', 'bachs-donations' ) . '</h1>';
+		echo '<div class="wrap bachs-fundraising"><h1>' . esc_html__( 'Fundraising', 'bachs-donations' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Create donation forms for your causes, connect Bachs, and review confirmed gifts here.', 'bachs-donations' ) . '</p>';
-		echo '<p><a class="button button-primary button-hero" href="' . esc_url( admin_url( 'post-new.php?post_type=' . DonationForms::POST_TYPE ) ) . '">' . esc_html__( 'Create a donation form', 'bachs-donations' ) . '</a> <a class="button button-hero" href="' . esc_url( admin_url( 'edit.php?post_type=' . DonationForms::POST_TYPE ) ) . '">' . esc_html__( 'Manage forms', 'bachs-donations' ) . '</a> <a class="button button-hero" href="' . esc_url( admin_url( 'admin.php?page=bachs-donations-settings' ) ) . '">' . esc_html__( 'Configure Bachs', 'bachs-donations' ) . '</a></p>';
-		echo '<div class="card" style="max-width:850px;padding:16px 20px;margin-top:22px"><h2>' . esc_html__( 'Get started', 'bachs-donations' ) . '</h2><ol><li>' . esc_html__( 'Configure sandbox or live API credentials and webhook signing secret in Bachs Donations settings.', 'bachs-donations' ) . '</li><li>' . esc_html__( 'Create a donation form, add your cause story and image, then choose currencies and suggested amounts.', 'bachs-donations' ) . '</li><li>' . esc_html__( 'Publish the form. Its public page includes the secure donation form automatically. You can also copy its shortcode into another page.', 'bachs-donations' ) . '</li></ol>';
+		echo '<p class="bachs-fundraising-actions"><a class="button button-primary button-hero" href="' . esc_url( admin_url( 'post-new.php?post_type=' . DonationForms::POST_TYPE ) ) . '">' . esc_html__( 'Create a donation form', 'bachs-donations' ) . '</a> <a class="button button-hero" href="' . esc_url( admin_url( 'edit.php?post_type=' . DonationForms::POST_TYPE ) ) . '">' . esc_html__( 'Manage forms', 'bachs-donations' ) . '</a> <a class="button button-hero" href="' . esc_url( admin_url( 'admin.php?page=bachs-donations-ledger' ) ) . '">' . esc_html__( 'View donations', 'bachs-donations' ) . '</a> <a class="button button-hero" href="' . esc_url( admin_url( 'admin.php?page=bachs-donations-reports' ) ) . '">' . esc_html__( 'View reports', 'bachs-donations' ) . '</a> <a class="button button-hero" href="' . esc_url( admin_url( 'admin.php?page=bachs-donations-settings' ) ) . '">' . esc_html__( 'Configure Bachs', 'bachs-donations' ) . '</a></p>';
+		echo '<section class="bachs-fundraising-setup"><h2>' . esc_html__( 'Get started', 'bachs-donations' ) . '</h2><ol><li>' . esc_html__( 'Configure sandbox or live API credentials and webhook signing secret in Bachs Donations settings.', 'bachs-donations' ) . '</li><li>' . esc_html__( 'Create a donation form, add your cause story and image, then choose currencies and suggested amounts.', 'bachs-donations' ) . '</li><li>' . esc_html__( 'Publish the form. Its public page includes the secure donation form automatically. You can also copy its shortcode into another page.', 'bachs-donations' ) . '</li></ol>';
 		if ( ! PaymentGateways::active()->is_configured() ) {
 			echo '<p><strong>' . esc_html__( 'Payments are not configured yet.', 'bachs-donations' ) . '</strong> ' . esc_html__( 'The public form will show as unavailable until Bachs credentials and a webhook secret are saved.', 'bachs-donations' ) . '</p>';
 		} else {
 			echo '<p><strong>' . esc_html__( 'The payment provider is configured.', 'bachs-donations' ) . '</strong> ' . esc_html__( 'Use sandbox first, complete a test donation, and switch to live only when your webhook is receiving signed events.', 'bachs-donations' ) . '</p>';
 		}
-		echo '</div><div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:20px">';
+		echo '</section><div class="bachs-fundraising-cards">';
 		self::summary_card( __( 'Published forms', 'bachs-donations' ), number_format_i18n( $form_count ) );
 		self::summary_card( __( 'Donation attempts', 'bachs-donations' ), number_format_i18n( $summary['donation_count'] ) );
 		self::summary_card( __( 'Confirmed donations', 'bachs-donations' ), number_format_i18n( $summary['paid_count'] ) );
@@ -132,6 +140,6 @@ final class Admin {
 
 	/** Output one compact count card on the Fundraising overview. */
 	private static function summary_card( $label, $value ) {
-		echo '<div class="card" style="min-width:170px;padding:16px 20px"><p style="margin:0;color:#646970">' . esc_html( $label ) . '</p><p style="font-size:26px;margin:8px 0 0"><strong>' . esc_html( $value ) . '</strong></p></div>';
+		echo '<div class="bachs-fundraising-card"><p>' . esc_html( $label ) . '</p><strong>' . esc_html( $value ) . '</strong></div>';
 	}
 }

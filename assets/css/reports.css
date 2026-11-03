@@ -1,0 +1,93 @@
+.bachs-donations-report-filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	gap: 12px;
+	margin: 20px 0;
+	padding: 16px;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.bachs-donations-report-filters label {
+	display: grid;
+	gap: 5px;
+	font-weight: 600;
+}
+
+.bachs-donations-report-filters .button {
+	margin: 0 0 1px;
+}
+
+.bachs-donations-report-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+	gap: 14px;
+	margin: 18px 0 26px;
+}
+
+.bachs-donations-report-card {
+	min-height: 95px;
+	padding: 16px 18px;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.bachs-donations-report-card p {
+	margin: 0 0 8px;
+	color: #50575e;
+}
+
+.bachs-donations-report-card strong {
+	display: block;
+	font-size: 20px;
+	line-height: 1.35;
+}
+
+.bachs-donations-report-card small {
+	display: block;
+	margin-top: 6px;
+	color: #646970;
+}
+
+.bachs-donations-report-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 28px 0 12px;
+}
+
+.bachs-donations-report-toolbar h2 {
+	margin: 0;
+}
+
+.bachs-donations-report-toolbar .button {
+	margin: 0;
+}
+
+.bachs-donations-report-cards + .bachs-donations-report-toolbar {
+	margin-top: 12px;
+}
+
+.bachs-donations-report-toolbar + .widefat progress {
+	width: min(100%, 160px);
+	vertical-align: middle;
+	margin-left: 6px;
+	accent-color: #176b52;
+}
+
+@media (max-width: 782px) {
+	.bachs-donations-report-filters {
+		align-items: stretch;
+	}
+
+	.bachs-donations-report-filters label,
+	.bachs-donations-report-filters input,
+	.bachs-donations-report-filters select {
+		width: 100%;
+	}
+}

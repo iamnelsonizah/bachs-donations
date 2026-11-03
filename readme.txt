@@ -3,7 +3,7 @@ Contributors: nelsonizah
 Tags: donations, charity, ngo, payments, bachs
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,8 +23,13 @@ This early release supports one-time payments only. See README.md for installati
 4. Register the webhook URL shown in settings in your Bachs dashboard and subscribe it to checkout.completed, checkout.expired, and collection.succeeded.
 5. Open Fundraising > Donation Forms > Add Donation Form, configure your cause and amounts, and publish it. Its page includes the donation form automatically.
 6. Optionally embed a form elsewhere with [bachs_donation_form id="123"], replacing 123 with the form ID.
+7. Open Fundraising > Reports to review date-filtered gifts, confirmation rate, USD and NGN totals, daily performance, top forms, or export a CSV.
 
 == Changelog ==
+
+= 0.3.0 =
+* Add date-filtered fundraising reports with separate USD and NGN totals, daily performance, top forms, and protected CSV exports.
+* Improve donor amount selection with accessible amount cards, currency-aware choices, and inline validation.
 
 = 0.2.0 =
 * Added Donation Forms with per-form currency, suggested amount, custom amount, and goal settings.

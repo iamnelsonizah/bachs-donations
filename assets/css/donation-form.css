@@ -28,6 +28,73 @@
 	margin: 0 0 1.15rem;
 }
 
+.bachs-donation-amounts {
+	min-width: 0;
+	margin: 0 0 1.15rem;
+	padding: 0;
+	border: 0;
+}
+
+.bachs-donation-amounts legend {
+	margin-bottom: .65rem;
+	font-weight: 700;
+}
+
+.bachs-donation-amount-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+	gap: .65rem;
+}
+
+.bachs-donation-amount-choice {
+	position: relative;
+	display: block !important;
+	margin: 0 !important;
+	cursor: pointer;
+}
+
+.bachs-donation-amount-choice input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+}
+
+.bachs-donation-amount-choice span {
+	display: flex;
+	min-height: 3rem;
+	align-items: center;
+	justify-content: center;
+	padding: .6rem .8rem;
+	border: 1px solid #9ba9a3;
+	border-radius: 7px;
+	background: #fff;
+	font-weight: 700;
+	text-align: center;
+	transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.bachs-donation-amount-choice input:checked + span {
+	border-color: var(--bachs-donations-accent);
+	background: #edf6f1;
+	color: #124e3c;
+	box-shadow: inset 0 0 0 1px var(--bachs-donations-accent);
+}
+
+.bachs-donation-amount-choice input:focus-visible + span {
+	outline: 3px solid rgb(23 107 82 / 25%);
+	outline-offset: 2px;
+}
+
+.bachs-donation-amount-choice[hidden] {
+	display: none !important;
+}
+
+.bachs-donation-validation {
+	color: #9b1c1c;
+	font-weight: 600;
+}
+
 .bachs-donation-form label {
 	display: inline-block;
 	margin-bottom: .4rem;
@@ -71,6 +138,12 @@
 
 .bachs-donation-form button[type="submit"]:hover {
 	filter: brightness(.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.bachs-donation-amount-choice span {
+		transition: none;
+	}
 }
 
 .bachs-donation-privacy {

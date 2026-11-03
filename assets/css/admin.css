@@ -1,0 +1,59 @@
+.bachs-fundraising {
+	max-width: 1200px;
+}
+
+.bachs-fundraising-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 20px 0;
+}
+
+.bachs-fundraising-actions .button {
+	margin: 0;
+}
+
+.bachs-fundraising-setup {
+	max-width: 850px;
+	margin: 20px 0;
+	padding: 18px 22px;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.bachs-fundraising-setup h2 {
+	margin-top: 0;
+}
+
+.bachs-fundraising-setup ol {
+	margin-left: 1.4em;
+}
+
+.bachs-fundraising-setup li {
+	margin-bottom: 8px;
+	line-height: 1.5;
+}
+
+.bachs-fundraising-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	gap: 14px;
+	margin: 20px 0;
+}
+
+.bachs-fundraising-card {
+	padding: 16px 20px;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.bachs-fundraising-card p {
+	margin: 0 0 8px;
+	color: #50575e;
+}
+
+.bachs-fundraising-card strong {
+	font-size: 26px;
+}
